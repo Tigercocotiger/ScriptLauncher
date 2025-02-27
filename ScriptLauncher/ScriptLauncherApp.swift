@@ -1,5 +1,5 @@
 import SwiftUI
-
+// Ajout d'un commentaire de test
 @main
 struct ScriptLauncherApp: App {
     var body: some Scene {
