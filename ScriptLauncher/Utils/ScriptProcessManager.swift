@@ -2,7 +2,7 @@
 //  ScriptProcessManager.swift
 //  ScriptLauncher
 //
-//  Created for ScriptLauncher on 04/03/2025.
+//  Updated for ScriptLauncher on 04/03/2025.
 //
 
 import Foundation
@@ -11,10 +11,10 @@ import Combine
 class ScriptProcessManager: ObservableObject {
     @Published var runningProcesses: [UUID: Process] = [:]
     
-    // Exécute un script et retourne un publisher avec sa sortie
-    func executeScript(script: ScriptFile) -> AnyPublisher<(UUID, String), Never> {
+    // Exécute un script et retourne un publisher avec sa sortie et son statut
+    func executeScript(script: ScriptFile) -> AnyPublisher<(UUID, String, ScriptStatus?, Date?), Never> {
         let id = script.id
-        let outputSubject = PassthroughSubject<(UUID, String), Never>()
+        let outputSubject = PassthroughSubject<(UUID, String, ScriptStatus?, Date?), Never>()
         
         DispatchQueue.global(qos: .userInitiated).async {
             let task = Process()
@@ -33,9 +33,9 @@ class ScriptProcessManager: ObservableObject {
                     // Ajouter le nouveau contenu à la sortie complète
                     fullOutput += string
                     
-                    // Envoyer la mise à jour via le subject
+                    // Envoyer la mise à jour via le subject sans changer l'état
                     DispatchQueue.main.async {
-                        outputSubject.send((id, fullOutput))
+                        outputSubject.send((id, fullOutput, nil, nil))
                     }
                 }
             }
@@ -60,10 +60,19 @@ class ScriptProcessManager: ObservableObject {
                 outputHandle.readabilityHandler = nil
                 
                 DispatchQueue.main.async {
+                    // Déterminer le statut final basé sur le code de sortie
+                    let finalStatus: ScriptStatus = task.terminationStatus == 0 ? .completed : .failed
+                    let endTime = Date()
+                    
                     // S'assurer que la sortie finale est envoyée
                     if fullOutput.isEmpty {
-                        outputSubject.send((id, "Exécution terminée avec succès."))
+                        fullOutput = finalStatus == .completed
+                            ? "Exécution terminée avec succès."
+                            : "Script terminé avec des erreurs (code: \(task.terminationStatus))"
                     }
+                    
+                    // Envoyer la mise à jour finale avec le statut et l'heure de fin
+                    outputSubject.send((id, fullOutput, finalStatus, endTime))
                     
                     // Supprimer le processus de la liste des processus en cours
                     self.runningProcesses.removeValue(forKey: id)
@@ -76,7 +85,10 @@ class ScriptProcessManager: ObservableObject {
                 outputHandle.readabilityHandler = nil
                 
                 DispatchQueue.main.async {
-                    outputSubject.send((id, "Erreur lors de l'exécution: \(error.localizedDescription)"))
+                    let errorOutput = "Erreur lors de l'exécution: \(error.localizedDescription)"
+                    let endTime = Date()
+                    
+                    outputSubject.send((id, errorOutput, .failed, endTime))
                     
                     // Supprimer le processus de la liste des processus en cours
                     self.runningProcesses.removeValue(forKey: id)

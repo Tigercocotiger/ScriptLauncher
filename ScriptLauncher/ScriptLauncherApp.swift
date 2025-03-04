@@ -32,6 +32,16 @@ struct ScriptLauncherApp: App {
                     )
                 }
                 .keyboardShortcut("s", modifiers: .command)
+                
+                Divider()
+                
+                Button("Arrêter tous les scripts") {
+                    NotificationCenter.default.post(
+                        name: NSNotification.Name("CancelAllScripts"),
+                        object: nil
+                    )
+                }
+                .keyboardShortcut(".", modifiers: .command)
             }
             
             CommandMenu("Affichage") {

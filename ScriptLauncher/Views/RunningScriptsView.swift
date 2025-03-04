@@ -7,6 +7,8 @@
 
 import SwiftUI
 
+import SwiftUI
+
 struct RunningScriptsView: View {
     let runningScripts: [RunningScript]
     let isDarkMode: Bool
@@ -17,6 +19,8 @@ struct RunningScriptsView: View {
         VStack(spacing: 0) {
             // En-tête
             HStack {
+                Spacer()
+                
                 Text("Scripts en cours d'exécution (\(runningScripts.count))")
                     .font(.headline)
                     .foregroundColor(DesignSystem.textPrimary(for: isDarkMode))
@@ -69,7 +73,7 @@ struct RunningScriptsView: View {
                             )
                             .background(
                                 script.isSelected
-                                ? (isDarkMode 
+                                ? (isDarkMode
                                    ? DesignSystem.accentColor(for: isDarkMode).opacity(0.3)
                                    : DesignSystem.accentColor(for: isDarkMode).opacity(0.1))
                                 : Color.clear
@@ -85,11 +89,18 @@ struct RunningScriptsView: View {
             }
         }
         .background(DesignSystem.cardBackground(for: isDarkMode))
-        .clipShape(RoundedRectangle(cornerRadius: DesignSystem.smallCornerRadius))
+        .clipShape(RoundedRectangle(cornerRadius: DesignSystem.cornerRadius))
         .overlay(
-            RoundedRectangle(cornerRadius: DesignSystem.smallCornerRadius)
+            RoundedRectangle(cornerRadius: DesignSystem.cornerRadius)
                 .stroke(Color.gray.opacity(0.2), lineWidth: 1)
         )
+        .shadow(
+            color: Color.black.opacity(DesignSystem.shadowOpacity(for: isDarkMode)),
+            radius: DesignSystem.shadowRadius,
+            x: 0,
+            y: DesignSystem.shadowY
+        )
+        .padding(.trailing, DesignSystem.spacing) // Ajout de la marge à droite
     }
 }
 
@@ -102,10 +113,22 @@ struct RunningScriptRow: View {
     var body: some View {
         HStack(spacing: DesignSystem.smallSpacing) {
             // Indicateur d'exécution
-            Circle()
-                .fill(Color.green)
-                .frame(width: 8, height: 8)
-                .padding(4)
+            if script.status == .running {
+                Circle()
+                    .fill(Color.orange)
+                    .frame(width: 8, height: 8)
+                    .padding(4)
+            } else if script.status == .completed {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundColor(.green)
+                    .font(.system(size: 10))
+                    .padding(3)
+            } else {
+                Image(systemName: "xmark.circle.fill")
+                    .foregroundColor(.red)
+                    .font(.system(size: 10))
+                    .padding(3)
+            }
             
             // Nom du script
             Text(script.name)
@@ -116,37 +139,26 @@ struct RunningScriptRow: View {
             Spacer()
             
             // Temps d'exécution écoulé
-            Text(elapsedTime(since: script.startTime))
+            Text(script.elapsedTime)
                 .font(.caption)
                 .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
                 .frame(width: 60, alignment: .trailing)
             
-            // Bouton d'annulation
-            Button(action: onCancel) {
-                Image(systemName: "xmark.circle.fill")
-                    .foregroundColor(.red.opacity(0.7))
-                    .font(.system(size: 14))
+            // Bouton d'annulation (uniquement pour les scripts en cours)
+            if script.status == .running {
+                Button(action: onCancel) {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(.red.opacity(0.7))
+                        .font(.system(size: 14))
+                }
+                .buttonStyle(PlainButtonStyle())
+                .help("Arrêter ce script")
             }
-            .buttonStyle(PlainButtonStyle())
-            .help("Arrêter ce script")
         }
         .padding(.vertical, 8)
         .padding(.horizontal, DesignSystem.spacing)
         .contentShape(Rectangle())
         .onTapGesture(perform: onSelect)
-    }
-    
-    // Calcul du temps écoulé depuis le début de l'exécution
-    private func elapsedTime(since startDate: Date) -> String {
-        let interval = Date().timeIntervalSince(startDate)
-        let minutes = Int(interval) / 60
-        let seconds = Int(interval) % 60
-        
-        if minutes > 0 {
-            return String(format: "%d:%02d", minutes, seconds)
-        } else {
-            return String(format: "%ds", seconds)
-        }
     }
 }
 
@@ -154,8 +166,8 @@ struct RunningScriptRow: View {
 #Preview("Running Scripts - Light Mode") {
     RunningScriptsView(
         runningScripts: [
-            RunningScript(id: UUID(), name: "Backup Script", startTime: Date().addingTimeInterval(-65), output: "Processing...", isSelected: true),
-            RunningScript(id: UUID(), name: "Export Data", startTime: Date().addingTimeInterval(-120), output: "Exporting data...")
+            RunningScript(id: UUID(), name: "Backup Script", startTime: Date().addingTimeInterval(-65), output: "Processing...", isSelected: true, status: .running),
+            RunningScript(id: UUID(), name: "Export Data", startTime: Date().addingTimeInterval(-120), output: "Exporting data...", status: .completed, endTime: Date())
         ],
         isDarkMode: false,
         onScriptSelect: { _ in },

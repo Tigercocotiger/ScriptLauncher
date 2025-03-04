@@ -2,6 +2,14 @@
 //  ExecuteMultipleButton.swift
 //  ScriptLauncher
 //
+//  Created by MacBook-16/M1P-001 on 04/03/2025.
+//
+
+
+//
+//  ExecuteMultipleButton.swift
+//  ScriptLauncher
+//
 //  Created for ScriptLauncher on 04/03/2025.
 //
 

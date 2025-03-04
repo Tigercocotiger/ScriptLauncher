@@ -69,6 +69,21 @@ struct MultiResultSection: View {
             // Barre d'état du script
             if let script = selectedScript {
                 HStack(spacing: DesignSystem.smallSpacing) {
+                    // Indicateur de statut
+                    if script.status == .running {
+                        Circle()
+                            .fill(Color.orange)
+                            .frame(width: 8, height: 8)
+                    } else if script.status == .completed {
+                        Circle()
+                            .fill(Color.green)
+                            .frame(width: 8, height: 8)
+                    } else {
+                        Circle()
+                            .fill(Color.red)
+                            .frame(width: 8, height: 8)
+                    }
+                    
                     Text(script.name)
                         .font(.caption)
                         .lineLimit(1)
@@ -76,9 +91,15 @@ struct MultiResultSection: View {
                     
                     Spacer()
                     
-                    Text("Démarré: \(formattedTime(script.startTime))")
-                        .font(.caption2)
-                        .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
+                    if script.status == .running {
+                        Text("Démarré: \(formattedTime(script.startTime))")
+                            .font(.caption2)
+                            .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
+                    } else if let endTime = script.endTime {
+                        Text("Terminé: \(formattedTime(endTime))")
+                            .font(.caption2)
+                            .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
+                    }
                 }
                 .padding(DesignSystem.smallSpacing)
                 .background(isDarkMode ? Color.black.opacity(0.2) : Color.gray.opacity(0.1))
@@ -112,7 +133,7 @@ struct MultiResultSection: View {
 #Preview("MultiResultSection - With Script") {
     MultiResultSection(
         runningScripts: [
-            RunningScript(id: UUID(), name: "Backup Script", startTime: Date().addingTimeInterval(-65), output: "Processing...\nStep 1 complete\nStep 2 in progress...", isSelected: true),
+            RunningScript(id: UUID(), name: "Backup Script", startTime: Date().addingTimeInterval(-65), output: "Processing...\nStep 1 complete\nStep 2 in progress...", isSelected: true, status: .running),
             RunningScript(id: UUID(), name: "Export Data", startTime: Date().addingTimeInterval(-120), output: "Exporting data...")
         ],
         selectedScriptId: UUID(), // This won't match any script in the preview
