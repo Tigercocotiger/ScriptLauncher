@@ -13,6 +13,8 @@ ScriptLauncher est une application macOS moderne permettant d'organiser, gérer 
 - **📊 Vue liste et grille** - Choisissez le mode d'affichage qui vous convient
 - **📤 Exécution en temps réel** - Visualisez la sortie de vos scripts pendant leur exécution
 - **⌨️ Raccourcis clavier** - Naviguez et exécutez vos scripts efficacement
+- **📂 Sélection de dossier** - Changez facilement le dossier cible des scripts
+- **💾 Configuration portable** - Vos préférences sont conservées même sur clé USB
 
 ## 📋 Prérequis
 
@@ -35,11 +37,12 @@ open ScriptLauncher.xcodeproj
 
 ### ⚙️ Configuration
 
-Par défaut, l'application recherche des scripts dans le dossier `/Volumes/Marco/Dév/Fonctionnel`. Vous pouvez modifier ce chemin dans le fichier `ContentView.swift` :
+ScriptLauncher est entièrement portable. Vous pouvez le déplacer sur une clé USB et l'utiliser sur n'importe quel Mac. Vos préférences, favoris et autres paramètres sont stockés dans un dossier `Resources/ScriptLauncher` à côté de l'application.
 
-```swift
-private let folderPath = "/chemin/vers/vos/scripts"
-```
+Pour changer le dossier cible des scripts :
+1. Cliquez sur l'icône d'engrenage à côté du chemin affiché
+2. Sélectionnez un dossier contenant des scripts (.scpt ou .applescript)
+3. Le nouveau chemin sera automatiquement sauvegardé
 
 ### ⌨️ Raccourcis clavier
 
@@ -71,6 +74,7 @@ La section "Scripts en cours d'exécution" vous permet de :
 - Arrêter un script spécifique ou tous les scripts en cours
 - Effacer l'historique des scripts terminés
 - Consulter le résultat d'un script en le sélectionnant
+- Relancer un script déjà exécuté
 
 Le code couleur indique l'état de chaque script :
 - 🟠 En cours
@@ -93,6 +97,8 @@ ScriptLauncher/
 - **ContentView** - Vue principale qui orchestre l'application
 - **RunningScriptsView** - Affichage des scripts en cours d'exécution
 - **MultiResultSection** - Affichage des résultats d'exécution
+- **FolderSelector** - Sélection du dossier cible des scripts
+- **ConfigManager** - Gestion de la configuration portable
 - **MultiselectScriptsList/GridView** - Affichage des scripts avec sélection multiple
 - **RunningScriptsViewModel** - Gestion des scripts en cours avec timer
 
@@ -117,11 +123,11 @@ L'application est construite avec SwiftUI et suit une architecture MVVM :
 
 ### 🔮 Extensions possibles
 
-- 📂 Support de plusieurs dossiers de scripts
 - 🏷️ Organisation par catégories
-- ⚙️ Paramètres personnalisables
+- ⚙️ Paramètres personnalisables avancés
 - 📅 Planification des scripts
 - 🐚 Support des scripts Shell et Python
+- 📊 Statistiques d'exécution
 
 ## 👥 Contributeurs
 
