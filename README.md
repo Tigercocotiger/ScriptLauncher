@@ -1,4 +1,4 @@
-# 🚀 ScriptLauncher
+# 🚀 ScriptLauncher [![Télécharger la dernière version](https://img.shields.io/badge/Télécharger-v1.0-blue.svg?style=for-the-badge&logo=apple)](https://github.com/tigercocotiger/ScriptLauncher/releases/latest)
 
 ScriptLauncher est une application macOS moderne permettant d'organiser, gérer et exécuter vos scripts AppleScript et .scpt plus facilement. Cette interface élégante vous offre une expérience fluide pour lancer vos automatisations.
 
