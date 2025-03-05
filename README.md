@@ -1,25 +1,25 @@
-# ScriptLauncher
+# 🚀 ScriptLauncher
 
 ScriptLauncher est une application macOS moderne permettant d'organiser, gérer et exécuter vos scripts AppleScript et .scpt plus facilement. Cette interface élégante vous offre une expérience fluide pour lancer vos automatisations.
 
-## Fonctionnalités
+## ✨ Fonctionnalités
 
-- **Interface élégante** - Design moderne avec support des modes clair et sombre
-- **Sélection multiple** - Sélectionnez et exécutez plusieurs scripts simultanément
-- **Suivi en temps réel** - Compteurs de temps qui s'actualisent automatiquement
-- **Historique d'exécution** - Conserve l'historique des scripts exécutés (succès/échec)
-- **Gestion des favoris** - Marquez vos scripts les plus utilisés pour un accès rapide
-- **Recherche instantanée** - Trouvez rapidement vos scripts par leur nom
-- **Vue liste et grille** - Choisissez le mode d'affichage qui vous convient
-- **Exécution en temps réel** - Visualisez la sortie de vos scripts pendant leur exécution
-- **Raccourcis clavier** - Naviguez et exécutez vos scripts efficacement
+- **🎨 Interface élégante** - Design moderne avec support des modes clair et sombre
+- **☑️ Sélection multiple** - Sélectionnez et exécutez plusieurs scripts simultanément
+- **⏱️ Suivi en temps réel** - Compteurs de temps qui s'actualisent automatiquement
+- **📜 Historique d'exécution** - Conserve l'historique des scripts exécutés (succès/échec)
+- **⭐ Gestion des favoris** - Marquez vos scripts les plus utilisés pour un accès rapide
+- **🔍 Recherche instantanée** - Trouvez rapidement vos scripts par leur nom
+- **📊 Vue liste et grille** - Choisissez le mode d'affichage qui vous convient
+- **📤 Exécution en temps réel** - Visualisez la sortie de vos scripts pendant leur exécution
+- **⌨️ Raccourcis clavier** - Naviguez et exécutez vos scripts efficacement
 
-## Prérequis
+## 📋 Prérequis
 
 - macOS 13.5 ou supérieur
 - Xcode 16.2 ou supérieur pour compilation
 
-## Installation
+## 📥 Installation
 
 1. Clonez ce dépôt
 2. Ouvrez le projet dans Xcode
@@ -31,9 +31,9 @@ cd ScriptLauncher
 open ScriptLauncher.xcodeproj
 ```
 
-## Utilisation
+## 🎮 Utilisation
 
-### Configuration
+### ⚙️ Configuration
 
 Par défaut, l'application recherche des scripts dans le dossier `/Volumes/Marco/Dév/Fonctionnel`. Vous pouvez modifier ce chemin dans le fichier `ContentView.swift` :
 
@@ -41,7 +41,7 @@ Par défaut, l'application recherche des scripts dans le dossier `/Volumes/Marco
 private let folderPath = "/chemin/vers/vos/scripts"
 ```
 
-### Raccourcis clavier
+### ⌨️ Raccourcis clavier
 
 - `⌘ + Entrée` : Exécuter le script sélectionné
 - `⌘ + ⇧ + Entrée` : Exécuter tous les scripts sélectionnés
@@ -53,7 +53,7 @@ private let folderPath = "/chemin/vers/vos/scripts"
 - `⌘ + .` : Arrêter tous les scripts en cours
 - `Échap` : Annuler la recherche
 
-### Sélection multiple
+### 📋 Sélection multiple
 
 Vous pouvez sélectionner plusieurs scripts pour les exécuter en même temps :
 
@@ -62,7 +62,7 @@ Vous pouvez sélectionner plusieurs scripts pour les exécuter en même temps :
 3. Utilisez les boutons "Tout sélectionner" ou "Désélectionner tout"
 4. Cliquez sur "Exécuter X scripts" pour lancer tous les scripts sélectionnés
 
-### Gestion de l'historique
+### 📊 Gestion de l'historique
 
 La section "Scripts en cours d'exécution" vous permet de :
 
@@ -77,18 +77,18 @@ Le code couleur indique l'état de chaque script :
 - 🟢 Terminé
 - 🔴 Erreur
 
-## Structure du projet
+## 📁 Structure du projet
 
 ```
 ScriptLauncher/
-├── Components/         # Composants d'interface réutilisables
-├── Models/             # Définitions des modèles de données et ViewModels
-├── Styles/             # Système de design et styles d'interface
-├── Utils/              # Utilitaires et fonctions d'aide
-└── Views/              # Vues principales de l'application
+├── Components/         # 🧩 Composants d'interface réutilisables
+├── Models/             # 📊 Définitions des modèles de données et ViewModels
+├── Styles/             # 🎨 Système de design et styles d'interface
+├── Utils/              # 🔧 Utilitaires et fonctions d'aide
+└── Views/              # 📱 Vues principales de l'application
 ```
 
-### Composants principaux
+### 🧱 Composants principaux
 
 - **ContentView** - Vue principale qui orchestre l'application
 - **RunningScriptsView** - Affichage des scripts en cours d'exécution
@@ -96,37 +96,37 @@ ScriptLauncher/
 - **MultiselectScriptsList/GridView** - Affichage des scripts avec sélection multiple
 - **RunningScriptsViewModel** - Gestion des scripts en cours avec timer
 
-## Personnalisation
+## 🛠️ Personnalisation
 
-### Système de design
+### 🎨 Système de design
 
 Le système de design est centralisé dans `DesignSystem.swift`. Vous pouvez facilement modifier les couleurs, espaces et rayons pour adapter l'interface à vos préférences.
 
-### Localisation
+### 🌍 Localisation
 
 L'interface est actuellement en français. Pour ajouter d'autres langues, créez des fichiers de localisation pour les chaînes utilisées dans l'application.
 
-## Développement
+## 💻 Développement
 
-### Architecture
+### 🏗️ Architecture
 
 L'application est construite avec SwiftUI et suit une architecture MVVM :
 - Les modèles de données sont définis dans `Models.swift`
 - Les ViewModels gèrent l'état et la logique métier
 - Les vues sont réactives et se mettent à jour lorsque les données changent
 
-### Extensions possibles
+### 🔮 Extensions possibles
 
-- Support de plusieurs dossiers de scripts
-- Organisation par catégories
-- Paramètres personnalisables
-- Planification des scripts
-- Support des scripts Shell et Python
+- 📂 Support de plusieurs dossiers de scripts
+- 🏷️ Organisation par catégories
+- ⚙️ Paramètres personnalisables
+- 📅 Planification des scripts
+- 🐚 Support des scripts Shell et Python
 
-## Contributeurs
+## 👥 Contributeurs
 
 - Marco SIMON (Auteur original)
 
 ---
 
-*ScriptLauncher - Simplifiez l'exécution de vos scripts macOS*
+*🚀 ScriptLauncher - Simplifiez l'exécution de vos scripts macOS*
