@@ -4,7 +4,6 @@ import Cocoa
 
 struct ContentView: View {
     // MARK: - Properties
-    private let folderPath = "/Volumes/Marco/Dév/Fonctionnel"
     @State private var scripts: [ScriptFile] = []
     @State private var selectedScript: ScriptFile? // Maintenu pour la compatibilité
     @State private var errorMessage: String = ""
@@ -13,6 +12,7 @@ struct ContentView: View {
     @State private var showHelp: Bool = false
     @State private var isDarkMode: Bool = false
     @State private var isGridView: Bool = false
+    @State private var targetFolderPath: String = ConfigManager.shared.folderPath
     @FocusState private var isSearchFieldFocused: Bool
     
     // Nouvelles propriétés pour la sélection multiple
@@ -96,6 +96,18 @@ struct ContentView: View {
             Le résultat de la recherche s'affiche instantanément dans la liste des scripts.
             """
         ),
+        HelpSection(
+            title: "Dossier cible",
+            content: """
+            Vous pouvez changer le dossier contenant vos scripts en cliquant sur le bouton 
+            en forme d'engrenage en haut de l'application.
+            
+            Le dossier sélectionné doit contenir des fichiers .scpt ou .applescript pour être valide.
+            
+            Le chemin du dossier est sauvegardé avec l'application et sera conservé même si vous 
+            déplacez l'application sur une clé USB.
+            """
+        ),
     ]
     
     // MARK: - Body
@@ -170,21 +182,21 @@ struct ContentView: View {
         .onAppear {
             loadScripts()
             loadFavorites()
-            loadViewPreferences()
-            setupNotificationObservers()
             
-            // Charge la préférence de thème si elle existe
-            if let savedDarkMode = UserDefaults.standard.object(forKey: "isDarkMode") as? Bool {
-                isDarkMode = savedDarkMode
-            }
+            // Chargement des préférences depuis le gestionnaire de configuration
+            isDarkMode = ConfigManager.shared.isDarkMode
+            isGridView = ConfigManager.shared.isGridView
+            targetFolderPath = ConfigManager.shared.folderPath
+            
+            setupNotificationObservers()
         }
         .onReceive(Just(isDarkMode)) { newValue in
-            // Sauvegarde la préférence de thème
-            UserDefaults.standard.set(newValue, forKey: "isDarkMode")
+            // Sauvegarde la préférence de thème dans le gestionnaire de configuration
+            ConfigManager.shared.isDarkMode = newValue
         }
         .onReceive(Just(isGridView)) { newValue in
-            // Sauvegarde la préférence de vue
-            UserDefaults.standard.set(newValue, forKey: "isGridView")
+            // Sauvegarde la préférence de vue dans le gestionnaire de configuration
+            ConfigManager.shared.isGridView = newValue
         }
         .sheet(isPresented: $showHelp) {
             HelpView(helpSections: helpSections, isDarkMode: isDarkMode)
@@ -195,7 +207,26 @@ struct ContentView: View {
     
     // Section des scripts (barre de recherche + liste + bouton)
     private var scriptsSection: some View {
-        VStack(spacing: DesignSystem.spacing) {
+        VStack(spacing: 0) {
+            // Sélecteur de dossier cible
+            FolderSelector(
+                currentPath: targetFolderPath,
+                isDarkMode: isDarkMode,
+                onFolderSelected: { newPath in
+                    // Mettre à jour le chemin dans ConfigManager
+                    ConfigManager.shared.folderPath = newPath
+                    
+                    // Mettre à jour l'état local
+                    targetFolderPath = newPath
+                    
+                    // Recharger les scripts
+                    loadScripts()
+                    
+                    // Recharger les favoris
+                    loadFavorites()
+                }
+            )
+            
             SearchBar(
                 searchText: $searchText,
                 showFavoritesOnly: $showFavoritesOnly,
@@ -390,13 +421,6 @@ struct ContentView: View {
         }
     }
     
-    // Charge les préférences de vue
-    private func loadViewPreferences() {
-        if let savedGridView = UserDefaults.standard.object(forKey: "isGridView") as? Bool {
-            isGridView = savedGridView
-        }
-    }
-    
     // Ajoute ou supprime un script des favoris
     private func toggleFavorite(_ script: ScriptFile) {
         if let index = scripts.firstIndex(where: { $0.id == script.id }) {
@@ -410,26 +434,23 @@ struct ContentView: View {
         }
     }
     
-    // Sauvegarde les favoris dans UserDefaults
+    // Sauvegarde les favoris dans le gestionnaire de configuration
     private func saveFavorites() {
-        let favorites = Favorites(scriptPaths: Set(scripts.filter { $0.isFavorite }.map { $0.path }))
-        if let data = try? JSONEncoder().encode(favorites) {
-            UserDefaults.standard.set(data, forKey: "ScriptFavorites")
-        }
+        let favoritePaths = Set(scripts.filter { $0.isFavorite }.map { $0.path })
+        ConfigManager.shared.favorites = favoritePaths
     }
     
-    // Charge les favoris depuis UserDefaults
+    // Charge les favoris depuis le gestionnaire de configuration
     private func loadFavorites() {
-        if let data = UserDefaults.standard.data(forKey: "ScriptFavorites"),
-           let favorites = try? JSONDecoder().decode(Favorites.self, from: data) {
-            for (index, script) in scripts.enumerated() where favorites.scriptPaths.contains(script.path) {
-                scripts[index].isFavorite = true
-            }
+        let favoritesPaths = ConfigManager.shared.favorites
+        for (index, script) in scripts.enumerated() where favoritesPaths.contains(script.path) {
+            scripts[index].isFavorite = true
         }
     }
     
     // Charge les scripts depuis le dossier
     private func loadScripts() {
+        let folderPath = targetFolderPath
         let fileManager = FileManager.default
         do {
             let files = try fileManager.contentsOfDirectory(atPath: folderPath)
@@ -450,17 +471,32 @@ struct ContentView: View {
     }
     
     // Exécute un script spécifique
+    // Exécute un script spécifique
     private func executeScript(script: ScriptFile) {
-        // Créer un nouvel objet RunningScript
-        let newRunningScript = RunningScript(
-            id: script.id,
-            name: script.name,
-            startTime: Date(),
-            output: "Démarrage de l'exécution...\n"
-        )
-        
-        // Ajouter le script à la liste des scripts en cours
-        runningScriptsVM.addScript(newRunningScript)
+        // Vérifier si ce script est déjà dans la liste des scripts exécutés
+        if runningScriptsVM.scripts.contains(where: { $0.id == script.id }) {
+            // Le script existe déjà dans la liste, le réinitialiser
+            let now = Date()
+            runningScriptsVM.updateScript(
+                id: script.id,
+                output: "Démarrage d'une nouvelle exécution...\n",
+                status: .running,
+                endTime: nil
+            )
+            // Mettre à jour le temps de démarrage
+            runningScriptsVM.resetScriptStartTime(id: script.id, startTime: now)
+        } else {
+            // Créer un nouvel objet RunningScript
+            let newRunningScript = RunningScript(
+                id: script.id,
+                name: script.name,
+                startTime: Date(),
+                output: "Démarrage de l'exécution...\n"
+            )
+            
+            // Ajouter le script à la liste des scripts en cours
+            runningScriptsVM.addScript(newRunningScript)
+        }
         
         // Mise à jour de la date d'exécution du script dans la liste principale
         if let index = self.scripts.firstIndex(where: { $0.id == script.id }) {
@@ -475,9 +511,6 @@ struct ContentView: View {
             .sink { (scriptId, output, status, endTime) in
                 // Mettre à jour la sortie du script correspondant
                 runningScriptsVM.updateScript(id: scriptId, output: output, status: status, endTime: endTime)
-                
-                // Ne plus supprimer les scripts terminés
-                // Les scripts restent dans la liste même après leur exécution
             }
             .store(in: &cancellables)
     }

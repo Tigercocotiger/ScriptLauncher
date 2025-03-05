@@ -1,5 +1,5 @@
 import SwiftUI
-// Ajout d'un commentaire de test
+
 @main
 struct ScriptLauncherApp: App {
     var body: some Scene {
@@ -97,13 +97,7 @@ struct ScriptLauncherApp: App {
         // Personnalisation de la barre de titre
         NSWindow.allowsAutomaticWindowTabbing = false
         
-        // Configuration de l'apparence par défaut
-        if let savedAppearance = UserDefaults.standard.string(forKey: "AppAppearance") {
-            if savedAppearance == "dark" {
-                NSApp.appearance = NSAppearance(named: .darkAqua)
-            } else {
-                NSApp.appearance = NSAppearance(named: .aqua)
-            }
-        }
+        // Configuration de l'apparence par défaut basée sur le gestionnaire de configuration
+        NSApp.appearance = NSAppearance(named: ConfigManager.shared.isDarkMode ? .darkAqua : .aqua)
     }
 }

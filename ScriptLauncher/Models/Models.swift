@@ -9,11 +9,6 @@
 import SwiftUI
 import Combine
 
-// Modèle pour les favoris
-struct Favorites: Codable {
-    var scriptPaths: Set<String>
-}
-
 // Modèle pour un fichier script
 struct ScriptFile: Identifiable, Hashable {
     let id = UUID()
@@ -47,7 +42,7 @@ enum ScriptStatus {
 struct RunningScript: Identifiable {
     let id: UUID
     let name: String
-    let startTime: Date
+    var startTime: Date  // Modifié de 'let' à 'var' pour permettre la réinitialisation
     var output: String
     var isSelected: Bool = false
     var status: ScriptStatus = .running
@@ -118,6 +113,13 @@ class RunningScriptsViewModel: ObservableObject {
                 scripts[index].status = newStatus
                 scripts[index].endTime = endTime
             }
+        }
+    }
+    
+    // Réinitialise le temps de démarrage d'un script
+    func resetScriptStartTime(id: UUID, startTime: Date) {
+        if let index = scripts.firstIndex(where: { $0.id == id }) {
+            scripts[index].startTime = startTime
         }
     }
     
