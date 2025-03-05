@@ -3,17 +3,17 @@
 //  ScriptLauncher
 //
 //  Created for ScriptLauncher on 04/03/2025.
+//  Updated on 05/03/2025.
 //
 
 import SwiftUI
 
 struct MultiResultSection: View {
-    let runningScripts: [RunningScript]
-    let selectedScriptId: UUID?
+    @ObservedObject var viewModel: RunningScriptsViewModel
     let isDarkMode: Bool
     
     private var selectedScript: RunningScript? {
-        runningScripts.first { $0.id == selectedScriptId }
+        viewModel.scripts.first { $0.id == viewModel.selectedScriptId }
     }
     
     var body: some View {
@@ -24,10 +24,11 @@ struct MultiResultSection: View {
                 .foregroundColor(DesignSystem.textPrimary(for: isDarkMode))
                 .frame(maxWidth: .infinity, alignment: .center)
                 .padding(.top, DesignSystem.spacing)
+                .padding(.bottom, 8)
             
             // Zone de résultat
             ZStack {
-                if runningScripts.isEmpty {
+                if viewModel.scripts.isEmpty {
                     VStack(spacing: DesignSystem.smallSpacing) {
                         Image(systemName: "terminal")
                             .font(.system(size: 32))
@@ -91,12 +92,13 @@ struct MultiResultSection: View {
                     
                     Spacer()
                     
+                    // Temps d'exécution - s'actualise automatiquement grâce au ViewModel
                     if script.status == .running {
-                        Text("Démarré: \(formattedTime(script.startTime))")
+                        Text("Démarré: \(formattedTime(script.startTime)) (\(script.elapsedTime))")
                             .font(.caption2)
                             .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
                     } else if let endTime = script.endTime {
-                        Text("Terminé: \(formattedTime(endTime))")
+                        Text("Terminé: \(formattedTime(endTime)) (\(script.elapsedTime))")
                             .font(.caption2)
                             .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
                     }
@@ -117,7 +119,6 @@ struct MultiResultSection: View {
             x: 0,
             y: DesignSystem.shadowY
         )
-        .padding(.trailing, DesignSystem.spacing)
     }
     
     // Format de l'heure pour l'affichage
@@ -131,12 +132,15 @@ struct MultiResultSection: View {
 
 // MARK: - Preview
 #Preview("MultiResultSection - With Script") {
-    MultiResultSection(
-        runningScripts: [
-            RunningScript(id: UUID(), name: "Backup Script", startTime: Date().addingTimeInterval(-65), output: "Processing...\nStep 1 complete\nStep 2 in progress...", isSelected: true, status: .running),
-            RunningScript(id: UUID(), name: "Export Data", startTime: Date().addingTimeInterval(-120), output: "Exporting data...")
-        ],
-        selectedScriptId: UUID(), // This won't match any script in the preview
+    // Créer un ViewModel pour la prévisualisation
+    let viewModel = RunningScriptsViewModel()
+    let scriptId = UUID()
+    viewModel.addScript(RunningScript(id: scriptId, name: "Backup Script", startTime: Date().addingTimeInterval(-65), output: "Processing...\nStep 1 complete\nStep 2 in progress...", isSelected: true, status: .running))
+    viewModel.addScript(RunningScript(id: UUID(), name: "Export Data", startTime: Date().addingTimeInterval(-120), output: "Exporting data..."))
+    viewModel.selectScript(id: scriptId)
+    
+    return MultiResultSection(
+        viewModel: viewModel,
         isDarkMode: false
     )
     .frame(height: 300)
@@ -145,8 +149,7 @@ struct MultiResultSection: View {
 
 #Preview("MultiResultSection - Empty") {
     MultiResultSection(
-        runningScripts: [],
-        selectedScriptId: nil,
+        viewModel: RunningScriptsViewModel(),
         isDarkMode: true
     )
     .frame(height: 300)

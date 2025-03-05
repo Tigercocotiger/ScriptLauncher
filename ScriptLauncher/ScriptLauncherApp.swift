@@ -23,6 +23,24 @@ struct ScriptLauncherApp: App {
                 }
                 .keyboardShortcut(.return, modifiers: .command)
                 
+                Button("Exécuter scripts sélectionnés") {
+                    NotificationCenter.default.post(
+                        name: NSNotification.Name("ExecuteSelectedScript"),
+                        object: nil
+                    )
+                }
+                .keyboardShortcut(.return, modifiers: [.command, .shift])
+                
+                Divider()
+                
+                Button("Sélectionner tous les scripts") {
+                    NotificationCenter.default.post(
+                        name: NSNotification.Name("SelectAllScripts"),
+                        object: nil
+                    )
+                }
+                .keyboardShortcut("a", modifiers: [.command, .option])
+                
                 Divider()
                 
                 Button("Ajouter aux favoris") {

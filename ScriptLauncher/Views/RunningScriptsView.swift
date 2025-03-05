@@ -3,14 +3,13 @@
 //  ScriptLauncher
 //
 //  Created for ScriptLauncher on 04/03/2025.
+//  Updated on 05/03/2025.
 //
 
 import SwiftUI
 
-import SwiftUI
-
 struct RunningScriptsView: View {
-    let runningScripts: [RunningScript]
+    @ObservedObject var viewModel: RunningScriptsViewModel
     let isDarkMode: Bool
     let onScriptSelect: (UUID) -> Void
     let onScriptCancel: (UUID) -> Void
@@ -18,24 +17,34 @@ struct RunningScriptsView: View {
     var body: some View {
         VStack(spacing: 0) {
             // En-tête
-            HStack {
-                Spacer()
-                
-                Text("Scripts en cours d'exécution (\(runningScripts.count))")
-                    .font(.headline)
-                    .foregroundColor(DesignSystem.textPrimary(for: isDarkMode))
-                
-                Spacer()
-                
-                // Bouton pour annuler tous les scripts
-                if !runningScripts.isEmpty {
+            Text("Scripts en cours d'exécution (\(viewModel.scripts.count))")
+                .font(.headline)
+                .foregroundColor(DesignSystem.textPrimary(for: isDarkMode))
+                .frame(maxWidth: .infinity, alignment: .center)
+                .padding(.top, DesignSystem.spacing)
+                .padding(.bottom, 8)
+            
+            if viewModel.scripts.isEmpty {
+                VStack(spacing: DesignSystem.spacing) {
+                    Image(systemName: "play.slash.fill")
+                        .font(.system(size: 32))
+                        .foregroundColor(DesignSystem.textSecondary(for: isDarkMode).opacity(0.5))
+                    
+                    Text("Aucun script en cours d'exécution")
+                        .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity) // Prend toute la hauteur disponible
+            } else {
+                HStack {
+                    Spacer()
+                    // Bouton pour annuler les scripts en cours
                     Button(action: {
-                        // Annuler tous les scripts
-                        runningScripts.forEach { script in
+                        // Annuler uniquement les scripts encore en cours
+                        viewModel.scripts.filter { $0.status == .running }.forEach { script in
                             onScriptCancel(script.id)
                         }
                     }) {
-                        Text("Tout arrêter")
+                        Text("Arrêter scripts en cours")
                             .font(.caption)
                             .foregroundColor(.red)
                     }
@@ -45,48 +54,47 @@ struct RunningScriptsView: View {
                     .background(Color.red.opacity(0.1))
                     .cornerRadius(4)
                 }
-            }
-            .padding(.horizontal, DesignSystem.spacing)
-            .padding(.vertical, 8)
-            .background(isDarkMode ? Color(red: 0.18, green: 0.18, blue: 0.2) : Color(white: 0.97))
-            
-            if runningScripts.isEmpty {
-                VStack(spacing: DesignSystem.spacing) {
-                    Image(systemName: "play.slash.fill")
-                        .font(.system(size: 32))
-                        .foregroundColor(DesignSystem.textSecondary(for: isDarkMode).opacity(0.5))
+                .padding(.horizontal, DesignSystem.spacing)
+                .padding(.bottom, 4)
+                
+                // Zone de liste des scripts
+                ZStack {
+                    // Couleur de fond pour la zone de contenu
+                    RoundedRectangle(cornerRadius: DesignSystem.smallCornerRadius)
+                        .fill(isDarkMode ? Color(red: 0.22, green: 0.22, blue: 0.24) : Color.white)
+                        .padding(.horizontal, DesignSystem.spacing)
                     
-                    Text("Aucun script en cours d'exécution")
-                        .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
-                }
-                .frame(maxWidth: .infinity, minHeight: 100)
-                .background(DesignSystem.cardBackground(for: isDarkMode))
-            } else {
-                ScrollView {
-                    LazyVStack(spacing: 0) {
-                        ForEach(runningScripts) { script in
-                            RunningScriptRow(
-                                script: script,
-                                isDarkMode: isDarkMode,
-                                onSelect: { onScriptSelect(script.id) },
-                                onCancel: { onScriptCancel(script.id) }
-                            )
-                            .background(
-                                script.isSelected
-                                ? (isDarkMode
-                                   ? DesignSystem.accentColor(for: isDarkMode).opacity(0.3)
-                                   : DesignSystem.accentColor(for: isDarkMode).opacity(0.1))
-                                : Color.clear
-                            )
-                            
-                            if script.id != runningScripts.last?.id {
-                                Divider()
-                                    .padding(.leading, 40)
+                    ScrollView {
+                        LazyVStack(spacing: 0) {
+                            ForEach(viewModel.scripts) { script in
+                                RunningScriptRow(
+                                    script: script,
+                                    isDarkMode: isDarkMode,
+                                    onSelect: { onScriptSelect(script.id) },
+                                    onCancel: { onScriptCancel(script.id) }
+                                )
+                                .background(
+                                    script.isSelected
+                                    ? (isDarkMode
+                                       ? DesignSystem.accentColor(for: isDarkMode).opacity(0.3)
+                                       : DesignSystem.accentColor(for: isDarkMode).opacity(0.1))
+                                    : Color.clear
+                                )
+                                
+                                if script.id != viewModel.scripts.last?.id {
+                                    Divider()
+                                        .padding(.leading, 40)
+                                }
                             }
                         }
+                        .padding(.bottom, 20) // Ajoute un espace en bas pour le défilement
                     }
+                    .padding(.horizontal, DesignSystem.spacing)
                 }
+                .frame(maxHeight: .infinity) // Prend toute la hauteur disponible
             }
+            
+            Spacer()
         }
         .background(DesignSystem.cardBackground(for: isDarkMode))
         .clipShape(RoundedRectangle(cornerRadius: DesignSystem.cornerRadius))
@@ -100,10 +108,10 @@ struct RunningScriptsView: View {
             x: 0,
             y: DesignSystem.shadowY
         )
-        .padding(.trailing, DesignSystem.spacing) // Ajout de la marge à droite
     }
 }
 
+// Structure pour une ligne représentant un script en cours d'exécution
 struct RunningScriptRow: View {
     let script: RunningScript
     let isDarkMode: Bool
@@ -138,7 +146,7 @@ struct RunningScriptRow: View {
             
             Spacer()
             
-            // Temps d'exécution écoulé
+            // Temps d'exécution écoulé - s'actualise automatiquement grâce au ViewModel
             Text(script.elapsedTime)
                 .font(.caption)
                 .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
@@ -164,11 +172,13 @@ struct RunningScriptRow: View {
 
 // MARK: - Preview
 #Preview("Running Scripts - Light Mode") {
-    RunningScriptsView(
-        runningScripts: [
-            RunningScript(id: UUID(), name: "Backup Script", startTime: Date().addingTimeInterval(-65), output: "Processing...", isSelected: true, status: .running),
-            RunningScript(id: UUID(), name: "Export Data", startTime: Date().addingTimeInterval(-120), output: "Exporting data...", status: .completed, endTime: Date())
-        ],
+    // Créer un ViewModel pour la prévisualisation
+    let viewModel = RunningScriptsViewModel()
+    viewModel.addScript(RunningScript(id: UUID(), name: "Backup Script", startTime: Date().addingTimeInterval(-65), output: "Processing...", isSelected: true, status: .running))
+    viewModel.addScript(RunningScript(id: UUID(), name: "Export Data", startTime: Date().addingTimeInterval(-120), output: "Exporting data...", status: .completed, endTime: Date()))
+    
+    return RunningScriptsView(
+        viewModel: viewModel,
         isDarkMode: false,
         onScriptSelect: { _ in },
         onScriptCancel: { _ in }
@@ -179,7 +189,7 @@ struct RunningScriptRow: View {
 
 #Preview("Running Scripts - Empty") {
     RunningScriptsView(
-        runningScripts: [],
+        viewModel: RunningScriptsViewModel(),
         isDarkMode: true,
         onScriptSelect: { _ in },
         onScriptCancel: { _ in }

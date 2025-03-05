@@ -2,18 +2,11 @@
 //  MultiselectScriptRowView.swift
 //  ScriptLauncher
 //
-//  Created by MacBook-16/M1P-001 on 05/03/2025.
-//
-
-
-//
-//  MultiselectScriptRowView.swift
-//  ScriptLauncher
-//
 //  Created on 05/03/2025.
 //
 
 import SwiftUI
+import Cocoa
 
 // Vue pour une ligne de script avec sélection multiple
 struct MultiselectScriptRowView: View {
@@ -21,6 +14,9 @@ struct MultiselectScriptRowView: View {
     let isDarkMode: Bool
     let onToggleSelect: () -> Void
     let onFavorite: () -> Void
+    
+    @State private var scriptIcon: NSImage? = nil
+    @State private var hasLoadedIcon: Bool = false
     
     // Extraire le nom du script sans l'extension
     private var scriptNameWithoutExtension: String {
@@ -37,19 +33,37 @@ struct MultiselectScriptRowView: View {
             Button(action: onToggleSelect) {
                 Image(systemName: script.isSelected ? "checkmark.square.fill" : "square")
                     .font(.system(size: 16))
-                    .foregroundColor(script.isSelected 
+                    .foregroundColor(script.isSelected
                                     ? DesignSystem.accentColor(for: isDarkMode)
                                     : DesignSystem.textSecondary(for: isDarkMode))
             }
             .buttonStyle(PlainButtonStyle())
             
-            // Icône de type avec état favori
-            Image(systemName: script.isFavorite ? "star.fill" : "doc.text")
-                .font(.system(size: 16))
-                .foregroundColor(script.isFavorite
-                                 ? DesignSystem.favoriteColor()
-                                 : DesignSystem.textSecondary(for: isDarkMode))
-                .frame(width: 20)
+            // Icône du script
+            ZStack {
+                // Étoile de favori si applicable
+                if script.isFavorite {
+                    Image(systemName: "star.fill")
+                        .font(.system(size: 12))
+                        .foregroundColor(DesignSystem.favoriteColor())
+                        .offset(x: 8, y: -8)
+                        .zIndex(1)
+                }
+                
+                // Icône du script
+                if hasLoadedIcon, let icon = scriptIcon {
+                    Image(nsImage: icon)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 20, height: 20)
+                } else {
+                    Image(systemName: script.name.hasSuffix(".scpt") ? "applescript" : "doc.text.fill")
+                        .font(.system(size: 16))
+                        .foregroundColor(DesignSystem.accentColor(for: isDarkMode))
+                        .frame(width: 20, height: 20)
+                }
+            }
+            .frame(width: 24, height: 24)
             
             // Nom du script sans extension
             Text(scriptNameWithoutExtension)
@@ -85,6 +99,9 @@ struct MultiselectScriptRowView: View {
                     : DesignSystem.accentColor(for: isDarkMode).opacity(0.1))
                 : Color.clear
         )
+        .onAppear {
+            loadScriptIcon()
+        }
     }
     
     // Formatage du temps écoulé
@@ -103,6 +120,19 @@ struct MultiselectScriptRowView: View {
             return "<1m"
         }
     }
+    
+    // Fonction pour charger l'icône du script
+    private func loadScriptIcon() {
+        DispatchQueue.global(qos: .userInitiated).async {
+            let workspace = NSWorkspace.shared
+            let icon = workspace.icon(forFile: script.path)
+            
+            DispatchQueue.main.async {
+                self.scriptIcon = icon
+                self.hasLoadedIcon = true
+            }
+        }
+    }
 }
 
 // MARK: - Preview
@@ -110,7 +140,7 @@ struct MultiselectScriptRowView: View {
     VStack(spacing: 8) {
         // Script normal
         MultiselectScriptRowView(
-            script: ScriptFile(name: "test_script.scpt", path: "/path/to/script", isFavorite: false, lastExecuted: nil, isSelected: false),
+            script: ScriptFile(name: "test_script.scpt", path: "/Applications/Script Editor.app", isFavorite: false, lastExecuted: nil, isSelected: false),
             isDarkMode: false,
             onToggleSelect: {},
             onFavorite: {}
@@ -120,7 +150,7 @@ struct MultiselectScriptRowView: View {
         
         // Script sélectionné
         MultiselectScriptRowView(
-            script: ScriptFile(name: "selected_script.scpt", path: "/path/to/selected", isFavorite: false, lastExecuted: Date(), isSelected: true),
+            script: ScriptFile(name: "selected_script.scpt", path: "/Applications/Automator.app", isFavorite: false, lastExecuted: Date(), isSelected: true),
             isDarkMode: false,
             onToggleSelect: {},
             onFavorite: {}
@@ -129,7 +159,7 @@ struct MultiselectScriptRowView: View {
         
         // Script favori et sélectionné
         MultiselectScriptRowView(
-            script: ScriptFile(name: "favorite_script.scpt", path: "/path/to/favorite", isFavorite: true, lastExecuted: Date(), isSelected: true),
+            script: ScriptFile(name: "favorite_script.scpt", path: "/System/Applications/Utilities/Terminal.app", isFavorite: true, lastExecuted: Date(), isSelected: true),
             isDarkMode: false,
             onToggleSelect: {},
             onFavorite: {}
@@ -143,7 +173,7 @@ struct MultiselectScriptRowView: View {
 #Preview("MultiselectScriptRowView - Mode sombre") {
     VStack(spacing: 8) {
         MultiselectScriptRowView(
-            script: ScriptFile(name: "dark_mode_script.applescript", path: "/path/to/dark", isFavorite: false, lastExecuted: Date().addingTimeInterval(-3600), isSelected: true),
+            script: ScriptFile(name: "dark_mode_script.applescript", path: "/System/Applications/Utilities/Console.app", isFavorite: false, lastExecuted: Date().addingTimeInterval(-3600), isSelected: true),
             isDarkMode: true,
             onToggleSelect: {},
             onFavorite: {}

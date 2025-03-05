@@ -6,7 +6,7 @@ struct ContentView: View {
     // MARK: - Properties
     private let folderPath = "/Volumes/Marco/Dév/Fonctionnel"
     @State private var scripts: [ScriptFile] = []
-    @State private var selectedScript: ScriptFile?
+    @State private var selectedScript: ScriptFile? // Maintenu pour la compatibilité
     @State private var errorMessage: String = ""
     @State private var searchText: String = ""
     @State private var showFavoritesOnly: Bool = false
@@ -15,11 +15,18 @@ struct ContentView: View {
     @State private var isGridView: Bool = false
     @FocusState private var isSearchFieldFocused: Bool
     
-    // Nouvelles propriétés pour l'exécution multiple
+    // Nouvelles propriétés pour la sélection multiple
+    @State private var selectedScripts: [UUID] = []
+    
+    // Propriétés pour l'exécution multiple avec timer
+    @StateObject private var runningScriptsVM = RunningScriptsViewModel()
     @StateObject private var scriptManager = ScriptProcessManager()
-    @State private var runningScripts: [RunningScript] = []
-    @State private var selectedRunningScriptId: UUID?
     @State private var cancellables = Set<AnyCancellable>()
+    
+    // Nombre de scripts sélectionnés
+    private var selectedScriptsCount: Int {
+        scripts.filter { $0.isSelected }.count
+    }
     
     // Liste des sections d'aide
     private let helpSections = [
@@ -27,50 +34,68 @@ struct ContentView: View {
             title: "Raccourcis clavier",
             content: """
             • ⌘ + Entrée : Exécuter le script sélectionné
+            • ⌘ + ⇧ + Entrée : Exécuter tous les scripts sélectionnés
+            • ⌘ + ⌥ + A : Sélectionner tous les scripts visibles
             • ⌘ + I : Afficher/masquer l'aide
             • ⌘ + S : Ajouter/retirer des favoris
             • ⌘ + G : Basculer entre vue liste et grille
             • ⌘ + D : Basculer entre mode clair et sombre
             • ⌘ + . : Arrêter tous les scripts en cours
-            • Échap : Annuler la recherche
+            • Échap : Annuler la recherche ou fermer l'aide
+            """
+        ),
+        HelpSection(
+            title: "Sélection multiple",
+            content: """
+            Vous pouvez sélectionner plusieurs scripts pour les exécuter en même temps :
+            
+            1. Cochez les cases à côté des scripts que vous souhaitez exécuter
+            2. Utilisez le raccourci ⌘ + ⌥ + A pour sélectionner tous les scripts visibles
+            3. Utilisez les boutons "Tout sélectionner" ou "Désélectionner tout" 
+            4. Cliquez sur "Exécuter X scripts" pour lancer tous les scripts sélectionnés
+            
+            La sélection multiple vous permet d'automatiser plusieurs tâches simultanément.
             """
         ),
         HelpSection(
             title: "Gestion des favoris",
             content: """
             Pour ajouter un script aux favoris :
-            1. Clic droit sur le script
-            2. Sélectionner "Ajouter aux favoris"
-            ou
-            • Sélectionner le script et utiliser ⌘ + S
+            • Cliquez sur l'icône d'étoile à côté du script
+            • Sélectionnez le script et utilisez ⌘ + S
+            
+            Pour n'afficher que les favoris :
+            • Activez le bouton d'étoile dans la barre de recherche
             
             Les favoris sont automatiquement sauvegardés dans les préférences de l'application.
             """
         ),
         HelpSection(
-            title: "Exécution multiple",
+            title: "Scripts en cours d'exécution",
             content: """
-            ScriptLauncher vous permet désormais d'exécuter plusieurs scripts simultanément :
-            1. Sélectionnez un script dans la liste
-            2. Cliquez sur "Exécuter"
-            3. Répétez pour lancer d'autres scripts
+            La section "Scripts en cours d'exécution" vous permet de :
             
-            Vous pouvez suivre la progression et voir les résultats de tous vos scripts en cours
-            dans la section "Scripts en cours d'exécution".
+            • Visualiser tous les scripts actuellement en exécution
+            • Suivre leur progression et leur temps d'exécution
+            • Arrêter un script spécifique ou tous les scripts
+            • Consulter le résultat d'un script en le sélectionnant
+            
+            Le code couleur indique l'état de chaque script :
+            🟠 En cours  🟢 Terminé  🔴 Erreur
             """
         ),
         HelpSection(
-            title: "Utilisation",
+            title: "Recherche et filtrage",
             content: """
-            1. Sélectionnez un script dans la liste
-            2. Cliquez sur "Exécuter" ou utilisez ⌘ + Entrée
-            3. Le résultat s'affichera dans la section de droite
+            La barre de recherche vous permet de filtrer rapidement vos scripts :
             
-            Utilisez la barre de recherche pour filtrer les scripts.
-            Activez "Favoris" pour n'afficher que vos scripts favoris.
-            Basculez entre vue liste et grille selon vos préférences.
+            • Tapez un terme pour filtrer les scripts par nom
+            • Combinez la recherche avec le filtre de favoris
+            • Appuyez sur Échap pour effacer la recherche
+            
+            Le résultat de la recherche s'affiche instantanément dans la liste des scripts.
             """
-        )
+        ),
     ]
     
     // MARK: - Body
@@ -83,65 +108,59 @@ struct ContentView: View {
                 
                 if geometry.size.width > 700 {
                     // Vue horizontale pour les grandes fenêtres
-                    HStack(spacing: DesignSystem.spacing) { // Rétablissement de l'espacement pour la marge entre les colonnes
+                    HStack(alignment: .top, spacing: DesignSystem.spacing) {
                         scriptsSection
-                            .frame(width: geometry.size.width * 0.62 - DesignSystem.spacing) // Soustraction de l'espacement pour la marge à droite
+                            .frame(width: geometry.size.width * 0.62 - DesignSystem.spacing)
                         
-                        VStack(spacing: DesignSystem.spacing) {
-                            // Section des scripts en cours d'exécution avec ajustement de position pour s'aligner avec la div principale
+                        VStack(spacing: 24) {
+                            // Section des scripts en cours d'exécution
                             RunningScriptsView(
-                                runningScripts: runningScripts,
+                                viewModel: runningScriptsVM,
                                 isDarkMode: isDarkMode,
                                 onScriptSelect: { scriptId in
-                                    selectedRunningScriptId = scriptId
-                                    // Mettre à jour l'état "isSelected" de chaque script
-                                    for i in 0..<runningScripts.count {
-                                        runningScripts[i].isSelected = (runningScripts[i].id == scriptId)
-                                    }
+                                    runningScriptsVM.selectScript(id: scriptId)
                                 },
                                 onScriptCancel: cancelScript
                             )
-                            .frame(height: min(150, max(80, geometry.size.height * 0.25)))
+                            .frame(height: 300)
+                            .padding(0)
                             
                             // Section des résultats
                             MultiResultSection(
-                                runningScripts: runningScripts,
-                                selectedScriptId: selectedRunningScriptId,
+                                viewModel: runningScriptsVM,
                                 isDarkMode: isDarkMode
                             )
+                            .frame(maxHeight: .infinity)
                         }
+                        .padding(.top, 0)
+                        .padding(.trailing, DesignSystem.spacing)
                         .frame(width: geometry.size.width * 0.38 - DesignSystem.spacing)
                     }
                     .padding(DesignSystem.spacing)
                 } else {
-                    // Vue verticale pour les petites fenêtres reste inchangée
-                    VStack(spacing: DesignSystem.spacing) {
+                    // Vue verticale pour les petites fenêtres
+                    VStack(alignment: .leading, spacing: DesignSystem.spacing) {
                         scriptsSection
                             .frame(height: geometry.size.height * 0.5)
                         
-                        VStack(spacing: DesignSystem.spacing) {
+                        VStack(spacing: 24) {
                             // Section des scripts en cours d'exécution
                             RunningScriptsView(
-                                runningScripts: runningScripts,
+                                viewModel: runningScriptsVM,
                                 isDarkMode: isDarkMode,
                                 onScriptSelect: { scriptId in
-                                    selectedRunningScriptId = scriptId
-                                    // Mettre à jour l'état "isSelected" de chaque script
-                                    for i in 0..<runningScripts.count {
-                                        runningScripts[i].isSelected = (runningScripts[i].id == scriptId)
-                                    }
+                                    runningScriptsVM.selectScript(id: scriptId)
                                 },
                                 onScriptCancel: cancelScript
                             )
-                            .frame(height: min(120, geometry.size.height * 0.2))
+                            .frame(height: 150)
                             
                             // Section des résultats
                             MultiResultSection(
-                                runningScripts: runningScripts,
-                                selectedScriptId: selectedRunningScriptId,
+                                viewModel: runningScriptsVM,
                                 isDarkMode: isDarkMode
                             )
-                            .frame(height: geometry.size.height * 0.3 - DesignSystem.spacing)
+                            .frame(maxHeight: .infinity)
                         }
                     }
                     .padding(DesignSystem.spacing)
@@ -189,38 +208,37 @@ struct ContentView: View {
                 }
             )
             
-            // Conditionnellement afficher la vue liste ou grille
+            // Conditionnellement afficher la vue liste ou grille avec sélection multiple
             if isGridView {
-                ScriptGridView(
+                MultiselectScriptGridView(
                     scripts: scripts,
-                    selectedScript: selectedScript,
                     isDarkMode: isDarkMode,
                     showFavoritesOnly: showFavoritesOnly,
                     searchText: searchText,
-                    onScriptSelect: { script in
-                        selectedScript = script
-                    },
-                    onToggleFavorite: toggleFavorite
+                    onToggleSelect: toggleScriptSelection,
+                    onToggleFavorite: toggleFavorite,
+                    onSelectAll: selectAllScripts,
+                    onUnselectAll: unselectAllScripts
                 )
             } else {
-                ScriptsList(
+                MultiselectScriptsList(
                     scripts: scripts,
-                    selectedScript: selectedScript,
                     isDarkMode: isDarkMode,
                     showFavoritesOnly: showFavoritesOnly,
                     searchText: searchText,
-                    onScriptSelect: { script in
-                        selectedScript = script
-                    },
-                    onToggleFavorite: toggleFavorite
+                    onToggleSelect: toggleScriptSelection,
+                    onToggleFavorite: toggleFavorite,
+                    onSelectAll: selectAllScripts,
+                    onUnselectAll: unselectAllScripts
                 )
             }
             
-            ExecuteMultipleButton(
-                selectedScript: selectedScript,
-                isScriptRunning: false, // Nous ne bloquons plus l'interface pendant l'exécution
+            // Bouton pour exécuter tous les scripts sélectionnés
+            ExecuteSelectedScriptsButton(
+                selectedScriptsCount: selectedScriptsCount,
+                isAnyScriptRunning: false,
                 isDarkMode: isDarkMode,
-                onExecute: executeSelectedScript
+                onExecute: executeSelectedScripts
             )
         }
         .background(DesignSystem.cardBackground(for: isDarkMode))
@@ -243,7 +261,11 @@ struct ContentView: View {
             object: nil,
             queue: .main
         ) { _ in
-            executeSelectedScript()
+            if let script = selectedScript {
+                executeScript(script: script)
+            } else if selectedScriptsCount > 0 {
+                executeSelectedScripts()
+            }
         }
         
         NotificationCenter.default.addObserver(
@@ -288,32 +310,83 @@ struct ContentView: View {
         ) { _ in
             cancelAllScripts()
         }
+        
+        // Ajouter observateur pour la sélection de tous les scripts
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("SelectAllScripts"),
+            object: nil,
+            queue: .main
+        ) { _ in
+            selectAllScripts()
+        }
+    }
+    
+    // Sélectionne tous les scripts visibles (filtres appliqués)
+    private func selectAllScripts() {
+        let filtered = scripts.filter { script in
+            let matchesSearch = searchText.isEmpty || script.name.localizedCaseInsensitiveContains(searchText)
+            let matchesFavorite = !showFavoritesOnly || script.isFavorite
+            return matchesSearch && matchesFavorite
+        }
+        
+        for index in 0..<scripts.count {
+            if filtered.contains(where: { $0.id == scripts[index].id }) {
+                scripts[index].isSelected = true
+            }
+        }
+    }
+    
+    // Désélectionne tous les scripts
+    private func unselectAllScripts() {
+        for index in 0..<scripts.count {
+            scripts[index].isSelected = false
+        }
+    }
+    
+    // Bascule la sélection d'un script
+    private func toggleScriptSelection(_ script: ScriptFile) {
+        if let index = scripts.firstIndex(where: { $0.id == script.id }) {
+            scripts[index].isSelected.toggle()
+            
+            // Maintenir la compatibilité avec selectedScript
+            if scripts[index].isSelected && selectedScript == nil {
+                selectedScript = scripts[index]
+            } else if !scripts[index].isSelected && selectedScript?.id == script.id {
+                // Si le script désélectionné était le selectedScript, trouver un autre script sélectionné
+                selectedScript = scripts.first(where: { $0.isSelected })
+            }
+        }
     }
     
     // Annule tous les scripts en cours d'exécution
     private func cancelAllScripts() {
+        // Annuler tous les processus en cours
         scriptManager.cancelAllScripts()
-        runningScripts = []
-        selectedRunningScriptId = nil
+        
+        // Mettre à jour le statut des scripts en cours d'exécution
+        for script in runningScriptsVM.scripts.filter({ $0.status == .running }) {
+            runningScriptsVM.updateScript(
+                id: script.id,
+                output: script.output + "\n\nScript arrêté par l'utilisateur.",
+                status: .failed,
+                endTime: Date()
+            )
+        }
     }
     
     // Annule un script spécifique
     private func cancelScript(id: UUID) {
+        // Arrêter le processus d'exécution
         scriptManager.cancelScript(id: id)
         
-        // Supprimer le script de la liste des scripts en cours
-        runningScripts.removeAll { $0.id == id }
-        
-        // Si le script annulé était sélectionné, sélectionner un autre script si disponible
-        if selectedRunningScriptId == id {
-            selectedRunningScriptId = runningScripts.first?.id
-            
-            // Mettre à jour l'état "isSelected" du nouveau script sélectionné
-            if let newSelectedId = selectedRunningScriptId {
-                for i in 0..<runningScripts.count {
-                    runningScripts[i].isSelected = (runningScripts[i].id == newSelectedId)
-                }
-            }
+        // Mettre à jour le statut du script au lieu de le supprimer
+        if let script = runningScriptsVM.scripts.first(where: { $0.id == id && $0.status == .running }) {
+            runningScriptsVM.updateScript(
+                id: id,
+                output: script.output + "\n\nScript arrêté par l'utilisateur.",
+                status: .failed,
+                endTime: Date()
+            )
         }
     }
     
@@ -366,7 +439,8 @@ struct ContentView: View {
                     name: $0,
                     path: (folderPath as NSString).appendingPathComponent($0),
                     isFavorite: false,
-                    lastExecuted: nil
+                    lastExecuted: nil,
+                    isSelected: false
                 )}
                 .sorted { $0.name < $1.name }
         } catch {
@@ -375,10 +449,8 @@ struct ContentView: View {
         }
     }
     
-    // Exécute le script sélectionné avec sortie en temps réel et support multi-exécution
-    private func executeSelectedScript() {
-        guard let script = selectedScript else { return }
-        
+    // Exécute un script spécifique
+    private func executeScript(script: ScriptFile) {
         // Créer un nouvel objet RunningScript
         let newRunningScript = RunningScript(
             id: script.id,
@@ -388,13 +460,7 @@ struct ContentView: View {
         )
         
         // Ajouter le script à la liste des scripts en cours
-        runningScripts.append(newRunningScript)
-        
-        // Si c'est le premier script en cours, le sélectionner automatiquement
-        if runningScripts.count == 1 {
-            selectedRunningScriptId = newRunningScript.id
-            runningScripts[0].isSelected = true
-        }
+        runningScriptsVM.addScript(newRunningScript)
         
         // Mise à jour de la date d'exécution du script dans la liste principale
         if let index = self.scripts.firstIndex(where: { $0.id == script.id }) {
@@ -408,46 +474,36 @@ struct ContentView: View {
             .receive(on: DispatchQueue.main)
             .sink { (scriptId, output, status, endTime) in
                 // Mettre à jour la sortie du script correspondant
-                if let index = self.runningScripts.firstIndex(where: { $0.id == scriptId }) {
-                    self.runningScripts[index].output = output
-                    
-                    // Mettre à jour le statut et l'heure de fin si fournis
-                    if let newStatus = status {
-                        self.runningScripts[index].status = newStatus
-                        self.runningScripts[index].endTime = endTime
-                        
-                        // Si le script est terminé, le supprimer après un délai
-                        if newStatus != .running {
-                            // D'abord, attendre 2 secondes pour que l'utilisateur voie le changement d'état
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                                // Vérifier si le script est toujours dans la liste (il pourrait avoir été enlevé manuellement)
-                                if let stillIndex = self.runningScripts.firstIndex(where: { $0.id == scriptId }) {
-                                    // Si c'était le script sélectionné, sélectionner un autre
-                                    if self.selectedRunningScriptId == scriptId {
-                                        self.selectedRunningScriptId = self.runningScripts.first(where: { $0.id != scriptId })?.id
-                                    }
-                                    
-                                    // Supprimer le script de la liste
-                                    self.runningScripts.remove(at: stillIndex)
-                                    
-                                    // Mettre à jour isSelected pour le nouveau script sélectionné
-                                    if let newSelectedId = self.selectedRunningScriptId {
-                                        for i in 0..<self.runningScripts.count {
-                                            self.runningScripts[i].isSelected = (self.runningScripts[i].id == newSelectedId)
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+                runningScriptsVM.updateScript(id: scriptId, output: output, status: status, endTime: endTime)
+                
+                // Ne plus supprimer les scripts terminés
+                // Les scripts restent dans la liste même après leur exécution
             }
             .store(in: &cancellables)
+    }
+    
+    // Exécute tous les scripts sélectionnés
+    private func executeSelectedScripts() {
+        let selectedScriptsList = scripts.filter { $0.isSelected }
+        
+        // Si aucun script n'est sélectionné mais qu'il y a un script "actif", l'exécuter
+        if selectedScriptsList.isEmpty, let script = selectedScript {
+            executeScript(script: script)
+            return
+        }
+        
+        // Exécuter chaque script sélectionné
+        for script in selectedScriptsList {
+            executeScript(script: script)
+        }
+        
+        // Optionnel: désélectionner tous les scripts après leur lancement
+        // unselectAllScripts()
     }
 }
 
 // MARK: - Preview
-#Preview("Content View") {
+#Preview("Content View - Multi Select") {
     ContentView()
         .frame(width: 1000, height: 650)
 }

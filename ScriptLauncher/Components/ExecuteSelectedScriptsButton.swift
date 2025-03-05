@@ -2,6 +2,14 @@
 //  ExecuteSelectedScriptsButton.swift
 //  ScriptLauncher
 //
+//  Created by MacBook-16/M1P-001 on 05/03/2025.
+//
+
+
+//
+//  ExecuteSelectedScriptsButton.swift
+//  ScriptLauncher
+//
 //  Created on 05/03/2025.
 //
 
