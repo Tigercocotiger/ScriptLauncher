@@ -1,11 +1,17 @@
+//
+//  MultiselectScriptRowView.swift
+//  ScriptLauncher
+//
+//  Created on 05/03/2025.
+//
+
 import SwiftUI
 
-// Vue pour une ligne de script
-struct ScriptRowView: View {
+// Vue pour une ligne de script avec sélection multiple
+struct MultiselectScriptRowView: View {
     let script: ScriptFile
-    let isSelected: Bool
     let isDarkMode: Bool
-    let onTap: () -> Void
+    let onToggleSelect: () -> Void
     let onFavorite: () -> Void
     
     // Extraire le nom du script sans l'extension
@@ -19,7 +25,17 @@ struct ScriptRowView: View {
     
     var body: some View {
         HStack(spacing: 12) {
-            // Icône de type
+            // Case à cocher pour la sélection
+            Button(action: onToggleSelect) {
+                Image(systemName: script.isSelected ? "checkmark.square.fill" : "square")
+                    .font(.system(size: 16))
+                    .foregroundColor(script.isSelected 
+                                    ? DesignSystem.accentColor(for: isDarkMode)
+                                    : DesignSystem.textSecondary(for: isDarkMode))
+            }
+            .buttonStyle(PlainButtonStyle())
+            
+            // Icône de type avec état favori
             Image(systemName: script.isFavorite ? "star.fill" : "doc.text")
                 .font(.system(size: 16))
                 .foregroundColor(script.isFavorite
@@ -41,7 +57,7 @@ struct ScriptRowView: View {
                     .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
             }
             
-            // Bouton favori (visible au survol)
+            // Bouton favori
             Button(action: onFavorite) {
                 Image(systemName: script.isFavorite ? "star.slash" : "star")
                     .font(.system(size: 12))
@@ -53,7 +69,14 @@ struct ScriptRowView: View {
         }
         .padding(.vertical, 6)
         .contentShape(Rectangle())
-        .onTapGesture(perform: onTap)
+        .onTapGesture(perform: onToggleSelect)
+        .background(
+            script.isSelected
+                ? (isDarkMode
+                    ? DesignSystem.accentColor(for: isDarkMode).opacity(0.3)
+                    : DesignSystem.accentColor(for: isDarkMode).opacity(0.1))
+                : Color.clear
+        )
     }
     
     // Formatage du temps écoulé
@@ -75,41 +98,46 @@ struct ScriptRowView: View {
 }
 
 // MARK: - Preview
-#Preview("Ligne de script - Mode clair") {
+#Preview("MultiselectScriptRowView - Mode clair") {
     VStack(spacing: 8) {
         // Script normal
-        ScriptRowView(
-            script: ScriptFile(name: "test_script.scpt", path: "/path/to/script", isFavorite: false, lastExecuted: nil),
-            isSelected: false,
+        MultiselectScriptRowView(
+            script: ScriptFile(name: "test_script.scpt", path: "/path/to/script", isFavorite: false, lastExecuted: nil, isSelected: false),
             isDarkMode: false,
-            onTap: {},
+            onToggleSelect: {},
             onFavorite: {}
         )
         .padding(.horizontal)
         .background(Color.white)
         
-        // Script favori
-        ScriptRowView(
-            script: ScriptFile(name: "favorite_script.scpt", path: "/path/to/favorite", isFavorite: true, lastExecuted: Date()),
-            isSelected: true,
+        // Script sélectionné
+        MultiselectScriptRowView(
+            script: ScriptFile(name: "selected_script.scpt", path: "/path/to/selected", isFavorite: false, lastExecuted: Date(), isSelected: true),
             isDarkMode: false,
-            onTap: {},
+            onToggleSelect: {},
             onFavorite: {}
         )
         .padding(.horizontal)
-        .background(Color.blue.opacity(0.1))
+        
+        // Script favori et sélectionné
+        MultiselectScriptRowView(
+            script: ScriptFile(name: "favorite_script.scpt", path: "/path/to/favorite", isFavorite: true, lastExecuted: Date(), isSelected: true),
+            isDarkMode: false,
+            onToggleSelect: {},
+            onFavorite: {}
+        )
+        .padding(.horizontal)
     }
     .padding()
-    .frame(width: 400, height: 120)
+    .frame(width: 400, height: 150)
 }
 
-#Preview("Ligne de script - Mode sombre") {
+#Preview("MultiselectScriptRowView - Mode sombre") {
     VStack(spacing: 8) {
-        ScriptRowView(
-            script: ScriptFile(name: "dark_mode_script.applescript", path: "/path/to/dark", isFavorite: false, lastExecuted: Date().addingTimeInterval(-3600)),
-            isSelected: false,
+        MultiselectScriptRowView(
+            script: ScriptFile(name: "dark_mode_script.applescript", path: "/path/to/dark", isFavorite: false, lastExecuted: Date().addingTimeInterval(-3600), isSelected: true),
             isDarkMode: true,
-            onTap: {},
+            onToggleSelect: {},
             onFavorite: {}
         )
         .padding(.horizontal)

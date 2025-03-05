@@ -1,14 +1,32 @@
+//
+//  MultiselectScriptGridView.swift
+//  ScriptLauncher
+//
+//  Created on 05/03/2025.
+//
+
 import SwiftUI
 import Cocoa
 
-struct ScriptGridView: View {
+struct MultiselectScriptGridView: View {
     let scripts: [ScriptFile]
-    let selectedScript: ScriptFile?
     let isDarkMode: Bool
     let showFavoritesOnly: Bool
     let searchText: String
-    let onScriptSelect: (ScriptFile) -> Void
+    let onToggleSelect: (ScriptFile) -> Void
     let onToggleFavorite: (ScriptFile) -> Void
+    let onSelectAll: () -> Void
+    let onUnselectAll: () -> Void
+    
+    // Nombre total de scripts affichés après filtrage
+    private var filteredScriptsCount: Int {
+        filteredScripts.count
+    }
+    
+    // Nombre de scripts sélectionnés
+    private var selectedScriptsCount: Int {
+        filteredScripts.filter { $0.isSelected }.count
+    }
     
     private var filteredScripts: [ScriptFile] {
         scripts.filter { script in
@@ -25,44 +43,76 @@ struct ScriptGridView: View {
     ]
     
     var body: some View {
-        ScrollView {
-            if filteredScripts.isEmpty {
-                VStack(spacing: DesignSystem.spacing) {
-                    Image(systemName: "doc.text.magnifyingglass")
-                        .font(.system(size: 40))
+        VStack(spacing: 0) {
+            // Barre d'actions de sélection
+            if filteredScriptsCount > 0 {
+                HStack {
+                    Text("\(selectedScriptsCount) script\(selectedScriptsCount != 1 ? "s" : "") sélectionné\(selectedScriptsCount != 1 ? "s" : "") sur \(filteredScriptsCount)")
+                        .font(.caption)
                         .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
                     
-                    Text(showFavoritesOnly
-                         ? "Aucun script favori"
-                         : (searchText.isEmpty ? "Aucun script trouvé" : "Aucun résultat pour '\(searchText)'"))
-                        .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                LazyVGrid(columns: columns, spacing: 12) {
-                    ForEach(filteredScripts) { script in
-                        ScriptGridItemView(
-                            script: script,
-                            isSelected: selectedScript?.id == script.id,
-                            isDarkMode: isDarkMode,
-                            onTap: { onScriptSelect(script) },
-                            onFavorite: { onToggleFavorite(script) }
-                        )
+                    Spacer()
+                    
+                    HStack(spacing: 12) {
+                        Button(action: onSelectAll) {
+                            Text("Tout sélectionner")
+                                .font(.caption)
+                                .foregroundColor(DesignSystem.accentColor(for: isDarkMode))
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .disabled(selectedScriptsCount == filteredScriptsCount)
+                        
+                        Button(action: onUnselectAll) {
+                            Text("Désélectionner tout")
+                                .font(.caption)
+                                .foregroundColor(DesignSystem.accentColor(for: isDarkMode))
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .disabled(selectedScriptsCount == 0)
                     }
                 }
-                .padding(.vertical, DesignSystem.spacing)
                 .padding(.horizontal, DesignSystem.spacing)
+                .padding(.vertical, 8)
+                .background(isDarkMode ? Color.black.opacity(0.2) : Color.gray.opacity(0.05))
+            }
+            
+            ScrollView {
+                if filteredScripts.isEmpty {
+                    VStack(spacing: DesignSystem.spacing) {
+                        Image(systemName: "doc.text.magnifyingglass")
+                            .font(.system(size: 40))
+                            .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
+                        
+                        Text(showFavoritesOnly
+                             ? "Aucun script favori"
+                             : (searchText.isEmpty ? "Aucun script trouvé" : "Aucun résultat pour '\(searchText)'"))
+                            .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    LazyVGrid(columns: columns, spacing: 12) {
+                        ForEach(filteredScripts) { script in
+                            MultiselectScriptGridItemView(
+                                script: script,
+                                isDarkMode: isDarkMode,
+                                onToggleSelect: { onToggleSelect(script) },
+                                onFavorite: { onToggleFavorite(script) }
+                            )
+                        }
+                    }
+                    .padding(.vertical, DesignSystem.spacing)
+                    .padding(.horizontal, DesignSystem.spacing)
+                }
             }
         }
     }
 }
 
-// Élément de grille pour un script
-struct ScriptGridItemView: View {
+// Élément de grille pour un script avec sélection multiple
+struct MultiselectScriptGridItemView: View {
     let script: ScriptFile
-    let isSelected: Bool
     let isDarkMode: Bool
-    let onTap: () -> Void
+    let onToggleSelect: () -> Void
     let onFavorite: () -> Void
     
     @State private var scriptIcon: NSImage? = nil
@@ -79,17 +129,27 @@ struct ScriptGridItemView: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // Partie supérieure avec icône
+            // Partie supérieure avec icône et sélection
             HStack {
+                // Case à cocher pour la sélection
+                Button(action: onToggleSelect) {
+                    Image(systemName: script.isSelected ? "checkmark.square.fill" : "square")
+                        .font(.system(size: 14))
+                        .foregroundColor(script.isSelected 
+                                        ? DesignSystem.accentColor(for: isDarkMode)
+                                        : DesignSystem.textSecondary(for: isDarkMode))
+                }
+                .buttonStyle(PlainButtonStyle())
+                
                 // Affichage de l'icône personnalisée ou par défaut
                 if hasLoadedIcon, let icon = scriptIcon {
                     Image(nsImage: icon)
                         .resizable()
                         .aspectRatio(contentMode: .fit)
-                        .frame(width: 24, height: 24)
+                        .frame(width: 20, height: 20)
                 } else {
                     Image(systemName: script.name.hasSuffix(".scpt") ? "applescript" : "doc.text.fill")
-                        .font(.system(size: 20))
+                        .font(.system(size: 16))
                         .foregroundColor(DesignSystem.accentColor(for: isDarkMode))
                 }
                 
@@ -129,13 +189,13 @@ struct ScriptGridItemView: View {
         .padding(10)
         .background(
             RoundedRectangle(cornerRadius: DesignSystem.smallCornerRadius)
-                .fill(isSelected
+                .fill(script.isSelected
                       ? DesignSystem.accentColor(for: isDarkMode).opacity(isDarkMode ? 0.3 : 0.1)
                       : DesignSystem.cardBackground(for: isDarkMode))
                 .overlay(
                     RoundedRectangle(cornerRadius: DesignSystem.smallCornerRadius)
                         .stroke(
-                            isSelected
+                            script.isSelected
                                 ? DesignSystem.accentColor(for: isDarkMode).opacity(0.5)
                                 : Color.gray.opacity(0.2),
                             lineWidth: 1
@@ -143,7 +203,7 @@ struct ScriptGridItemView: View {
                 )
         )
         .contentShape(Rectangle())
-        .onTapGesture(perform: onTap)
+        .onTapGesture(perform: onToggleSelect)
         .onAppear {
             loadScriptIcon()
         }
@@ -181,24 +241,21 @@ struct ScriptGridItemView: View {
 }
 
 // MARK: - Preview
-#Preview("Vue Grille - Mode clair") {
-    ScriptGridView(
+#Preview("MultiselectScriptGridView - Mode clair") {
+    MultiselectScriptGridView(
         scripts: [
-            ScriptFile(name: "script1.scpt", path: "/path/1", isFavorite: true, lastExecuted: Date()),
-            ScriptFile(name: "script2.applescript", path: "/path/2", isFavorite: false, lastExecuted: nil),
-            ScriptFile(name: "script3.scpt", path: "/path/3", isFavorite: false, lastExecuted: Date().addingTimeInterval(-3600)),
-            ScriptFile(name: "script_with_very_long_name.scpt", path: "/path/4", isFavorite: true, lastExecuted: Date().addingTimeInterval(-86400)),
-            ScriptFile(name: "script5.scpt", path: "/path/5", isFavorite: false, lastExecuted: Date()),
-            ScriptFile(name: "script6.applescript", path: "/path/6", isFavorite: true, lastExecuted: Date()),
-            ScriptFile(name: "script7.scpt", path: "/path/7", isFavorite: false, lastExecuted: nil),
-            ScriptFile(name: "script8.scpt", path: "/path/8", isFavorite: true, lastExecuted: Date())
+            ScriptFile(name: "script1.scpt", path: "/path/1", isFavorite: true, lastExecuted: Date(), isSelected: true),
+            ScriptFile(name: "script2.applescript", path: "/path/2", isFavorite: false, lastExecuted: nil, isSelected: false),
+            ScriptFile(name: "script3.scpt", path: "/path/3", isFavorite: false, lastExecuted: Date().addingTimeInterval(-3600), isSelected: true),
+            ScriptFile(name: "script_with_very_long_name.scpt", path: "/path/4", isFavorite: true, lastExecuted: Date().addingTimeInterval(-86400), isSelected: false)
         ],
-        selectedScript: nil,
         isDarkMode: false,
         showFavoritesOnly: false,
         searchText: "",
-        onScriptSelect: { _ in },
-        onToggleFavorite: { _ in }
+        onToggleSelect: { _ in },
+        onToggleFavorite: { _ in },
+        onSelectAll: {},
+        onUnselectAll: {}
     )
     .frame(width: 600, height: 400)
     .background(Color.white)

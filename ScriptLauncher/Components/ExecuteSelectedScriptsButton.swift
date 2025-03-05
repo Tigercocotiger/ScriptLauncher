@@ -1,23 +1,15 @@
 //
-//  ExecuteMultipleButton.swift
+//  ExecuteSelectedScriptsButton.swift
 //  ScriptLauncher
 //
-//  Created by MacBook-16/M1P-001 on 04/03/2025.
-//
-
-
-//
-//  ExecuteMultipleButton.swift
-//  ScriptLauncher
-//
-//  Created for ScriptLauncher on 04/03/2025.
+//  Created on 05/03/2025.
 //
 
 import SwiftUI
 
-struct ExecuteMultipleButton: View {
-    let selectedScript: ScriptFile?
-    let isScriptRunning: Bool
+struct ExecuteSelectedScriptsButton: View {
+    let selectedScriptsCount: Int
+    let isAnyScriptRunning: Bool
     let isDarkMode: Bool
     let onExecute: () -> Void
     
@@ -26,20 +18,20 @@ struct ExecuteMultipleButton: View {
             HStack {
                 Image(systemName: "play.fill")
                     .font(.system(size: 16))
-                Text("Exécuter")
+                Text("Exécuter \(selectedScriptsCount) script\(selectedScriptsCount > 1 ? "s" : "")")
                     .font(.headline)
             }
             .frame(maxWidth: .infinity)
             .frame(height: DesignSystem.buttonHeight)
             .background(
-                selectedScript == nil
+                selectedScriptsCount == 0
                     ? Color.gray 
                     : DesignSystem.accentColor(for: isDarkMode)
             )
             .foregroundColor(.white)
             .cornerRadius(DesignSystem.smallCornerRadius)
             .shadow(
-                color: (selectedScript == nil) 
+                color: (selectedScriptsCount == 0) 
                     ? Color.clear 
                     : DesignSystem.accentColor(for: isDarkMode).opacity(0.3),
                 radius: 4, 
@@ -48,18 +40,18 @@ struct ExecuteMultipleButton: View {
             )
         }
         .buttonStyle(PlainButtonStyle())
-        .disabled(selectedScript == nil)
-        .keyboardShortcut(.return, modifiers: .command)
+        .disabled(selectedScriptsCount == 0)
+        .keyboardShortcut(.return, modifiers: [.command, .shift])
         .padding(.horizontal, DesignSystem.spacing)
         .padding(.bottom, DesignSystem.spacing)
     }
 }
 
 // MARK: - Preview
-#Preview("Execute Button - Has Selection") {
-    ExecuteMultipleButton(
-        selectedScript: ScriptFile(name: "test.scpt", path: "/path", isFavorite: false, lastExecuted: nil),
-        isScriptRunning: false,
+#Preview("Execute Selected Scripts Button - Has Selection") {
+    ExecuteSelectedScriptsButton(
+        selectedScriptsCount: 3,
+        isAnyScriptRunning: false,
         isDarkMode: false,
         onExecute: {}
     )
@@ -67,10 +59,10 @@ struct ExecuteMultipleButton: View {
     .padding()
 }
 
-#Preview("Execute Button - No Selection") {
-    ExecuteMultipleButton(
-        selectedScript: nil,
-        isScriptRunning: false,
+#Preview("Execute Selected Scripts Button - No Selection") {
+    ExecuteSelectedScriptsButton(
+        selectedScriptsCount: 0,
+        isAnyScriptRunning: false,
         isDarkMode: true,
         onExecute: {}
     )
