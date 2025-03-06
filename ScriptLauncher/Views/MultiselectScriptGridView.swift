@@ -2,14 +2,6 @@
 //  MultiselectScriptGridView.swift
 //  ScriptLauncher
 //
-//  Created by MacBook-16/M1P-001 on 05/03/2025.
-//
-
-
-//
-//  MultiselectScriptGridView.swift
-//  ScriptLauncher
-//
 //  Created on 05/03/2025.
 //
 
@@ -45,9 +37,9 @@ struct MultiselectScriptGridView: View {
         }
     }
     
-    // Définir le nombre de colonnes en fonction de la largeur
+    // Définir le nombre de colonnes avec taille fixe
     private let columns = [
-        GridItem(.adaptive(minimum: 120, maximum: 160), spacing: 12)
+        GridItem(.adaptive(minimum: 160, maximum: 160), spacing: 16)
     ]
     
     var body: some View {
@@ -98,7 +90,7 @@ struct MultiselectScriptGridView: View {
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
-                    LazyVGrid(columns: columns, spacing: 12) {
+                    LazyVGrid(columns: columns, spacing: 16) {
                         ForEach(filteredScripts) { script in
                             MultiselectScriptGridItemView(
                                 script: script,
@@ -106,6 +98,7 @@ struct MultiselectScriptGridView: View {
                                 onToggleSelect: { onToggleSelect(script) },
                                 onFavorite: { onToggleFavorite(script) }
                             )
+                            .frame(width: 160, height: 180) // Hauteur réduite car on a supprimé les boutons
                         }
                     }
                     .padding(.vertical, DesignSystem.spacing)
@@ -116,7 +109,6 @@ struct MultiselectScriptGridView: View {
     }
 }
 
-// Élément de grille pour un script avec sélection multiple
 struct MultiselectScriptGridItemView: View {
     let script: ScriptFile
     let isDarkMode: Bool
@@ -136,65 +128,87 @@ struct MultiselectScriptGridItemView: View {
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // Partie supérieure avec icône et sélection
-            HStack {
-                // Case à cocher pour la sélection
-                Button(action: onToggleSelect) {
-                    Image(systemName: script.isSelected ? "checkmark.square.fill" : "square")
-                        .font(.system(size: 14))
-                        .foregroundColor(script.isSelected 
-                                        ? DesignSystem.accentColor(for: isDarkMode)
-                                        : DesignSystem.textSecondary(for: isDarkMode))
-                }
-                .buttonStyle(PlainButtonStyle())
+        VStack(alignment: .center, spacing: 0) {
+            // Partie supérieure avec icône centrée
+            ZStack {
+                // Cercle de fond
+                Circle()
+                    .fill(script.isSelected
+                          ? DesignSystem.accentColor(for: isDarkMode).opacity(0.2)
+                          : (isDarkMode ? Color(white: 0.25) : Color(white: 0.95)))
+                    .frame(width: 80, height: 80)
                 
-                // Affichage de l'icône personnalisée ou par défaut
+                // Icône du script
                 if hasLoadedIcon, let icon = scriptIcon {
                     Image(nsImage: icon)
                         .resizable()
                         .aspectRatio(contentMode: .fit)
-                        .frame(width: 20, height: 20)
+                        .frame(width: 45, height: 45)
                 } else {
                     Image(systemName: script.name.hasSuffix(".scpt") ? "applescript" : "doc.text.fill")
-                        .font(.system(size: 16))
+                        .font(.system(size: 30))
                         .foregroundColor(DesignSystem.accentColor(for: isDarkMode))
                 }
                 
-                Spacer()
+                // Badge de sélection en haut à droite
+                if script.isSelected {
+                    Circle()
+                        .fill(DesignSystem.accentColor(for: isDarkMode))
+                        .frame(width: 24, height: 24)
+                        .overlay(
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundColor(.white)
+                        )
+                        .position(x: 70, y: 10)
+                }
                 
-                // Icône de favori
+                // Bouton favori interactif en haut à gauche
                 Button(action: onFavorite) {
-                    Image(systemName: script.isFavorite ? "star.fill" : "star")
-                        .font(.system(size: 14))
-                        .foregroundColor(script.isFavorite
-                                         ? DesignSystem.favoriteColor()
-                                         : DesignSystem.textSecondary(for: isDarkMode))
+                    Circle()
+                        .fill(script.isFavorite ? DesignSystem.favoriteColor() : Color.gray.opacity(0.3))
+                        .frame(width: 24, height: 24)
+                        .overlay(
+                            Image(systemName: "star.fill")
+                                .font(.system(size: 12))
+                                .foregroundColor(script.isFavorite ? .white : Color.gray.opacity(0.7))
+                        )
                 }
                 .buttonStyle(PlainButtonStyle())
+                .position(x: 10, y: 10)
+                .help(script.isFavorite ? "Retirer des favoris" : "Ajouter aux favoris")
             }
+            .frame(width: 90, height: 90) // Taille fixe légèrement agrandie
+            .padding(.top, 12)
+            .padding(.bottom, 8)
             
             // Nom du script sans extension
             Text(scriptNameWithoutExtension)
-                .font(.system(size: 12))
-                .fontWeight(.medium)
+                .font(.system(size: 12, weight: .medium))
                 .foregroundColor(DesignSystem.textPrimary(for: isDarkMode))
                 .lineLimit(2)
-                .frame(height: 30, alignment: .top)
+                .multilineTextAlignment(.center)
+                .frame(width: 140, height: 32) // Taille fixe
+                .padding(.bottom, 4)
             
             // Date d'exécution
-            if let lastExec = script.lastExecuted {
-                Text(timeAgo(from: lastExec))
-                    .font(.caption2)
-                    .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
-            } else {
-                Text("Non exécuté")
-                    .font(.caption2)
-                    .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
-                    .opacity(0.6)
+            ZStack {
+                if let lastExec = script.lastExecuted {
+                    Text(timeAgo(from: lastExec))
+                        .font(.caption2)
+                        .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
+                } else {
+                    Text("Non exécuté")
+                        .font(.caption2)
+                        .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
+                        .opacity(0.6)
+                }
             }
+            .frame(height: 16) // Hauteur fixe
+            
+            Spacer()
         }
-        .padding(10)
+        .frame(width: 160, height: 180) // Taille totale fixe réduite
         .background(
             RoundedRectangle(cornerRadius: DesignSystem.smallCornerRadius)
                 .fill(script.isSelected

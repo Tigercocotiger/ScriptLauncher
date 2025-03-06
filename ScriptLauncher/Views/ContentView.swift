@@ -15,6 +15,12 @@ struct ContentView: View {
     @State private var targetFolderPath: String = ConfigManager.shared.folderPath
     @FocusState private var isSearchFieldFocused: Bool
     
+    // Variable pour l'animation de feu d'artifice
+    @State private var showGlobalFirework: Bool = false
+    
+    // État pour vérifier si le script de configuration est disponible
+    @State private var isConfiguratorAvailable: Bool = false
+    
     // Nouvelles propriétés pour la sélection multiple
     @State private var selectedScripts: [UUID] = []
     
@@ -124,7 +130,20 @@ struct ContentView: View {
                         scriptsSection
                             .frame(width: geometry.size.width * 0.62 - DesignSystem.spacing)
                         
-                        VStack(spacing: 24) {
+                        VStack(spacing: DesignSystem.spacing) {
+                            // Bouton de configuration
+                            ConfigButton(
+                                isDarkMode: isDarkMode,
+                                isEnabled: isConfiguratorAvailable,
+                                onConfigPressed: {
+                                    // Lancer le script Configurator3000
+                                    launchConfiguratorScript()
+                                    
+                                    // Déclencher le feu d'artifice centré
+                                    showGlobalFirework = true
+                                }
+                            )
+                            
                             // Section des scripts en cours d'exécution
                             RunningScriptsView(
                                 viewModel: runningScriptsVM,
@@ -155,7 +174,20 @@ struct ContentView: View {
                         scriptsSection
                             .frame(height: geometry.size.height * 0.5)
                         
-                        VStack(spacing: 24) {
+                        VStack(spacing: DesignSystem.spacing) {
+                            // Bouton de configuration
+                            ConfigButton(
+                                isDarkMode: isDarkMode,
+                                isEnabled: isConfiguratorAvailable,
+                                onConfigPressed: {
+                                    // Lancer le script Configurator3000
+                                    launchConfiguratorScript()
+                                    
+                                    // Déclencher le feu d'artifice centré
+                                    showGlobalFirework = true
+                                }
+                            )
+                            
                             // Section des scripts en cours d'exécution
                             RunningScriptsView(
                                 viewModel: runningScriptsVM,
@@ -178,6 +210,9 @@ struct ContentView: View {
                     .padding(DesignSystem.spacing)
                 }
             }
+            .overlay(
+                SimpleCenteredFirework(isVisible: $showGlobalFirework)
+            )
         }
         .onAppear {
             loadScripts()
@@ -283,6 +318,26 @@ struct ContentView: View {
     }
     
     // MARK: - Functions
+    
+    // Fonction pour lancer le script Configurator3000
+    private func launchConfiguratorScript() {
+        let configuratorPath = (targetFolderPath as NSString).appendingPathComponent("Configurator3000.scpt")
+        
+        if FileManager.default.fileExists(atPath: configuratorPath) {
+            // Créer un ScriptFile factice pour le configurateur
+            let configScript = ScriptFile(
+                name: "Configurator3000.scpt",
+                path: configuratorPath,
+                isFavorite: false,
+                lastExecuted: nil
+            )
+            
+            // Utiliser la fonction d'exécution existante
+            executeScript(script: configScript)
+        } else {
+            print("Script Configurator3000 non trouvé à: \(configuratorPath)")
+        }
+    }
     
     // Configuration des observateurs de notifications
     private func setupNotificationObservers() {
@@ -454,8 +509,15 @@ struct ContentView: View {
         let fileManager = FileManager.default
         do {
             let files = try fileManager.contentsOfDirectory(atPath: folderPath)
+            
+            // Filtrer les scripts AppleScript mais exclure Configurator3000.scpt
             scripts = files
-                .filter { $0.hasSuffix(".scpt") || $0.hasSuffix(".applescript") }
+                .filter {
+                    // Inclure seulement les fichiers .scpt et .applescript
+                    ($0.hasSuffix(".scpt") || $0.hasSuffix(".applescript")) &&
+                    // Mais exclure Configurator3000.scpt
+                    $0 != "Configurator3000.scpt"
+                }
                 .map { ScriptFile(
                     name: $0,
                     path: (folderPath as NSString).appendingPathComponent($0),
@@ -464,13 +526,19 @@ struct ContentView: View {
                     isSelected: false
                 )}
                 .sorted { $0.name < $1.name }
+            
+            // Vérifier si le configurateur est présent dans ce dossier
+            let configuratorPath = (folderPath as NSString).appendingPathComponent("Configurator3000.scpt")
+            isConfiguratorAvailable = fileManager.fileExists(atPath: configuratorPath)
+            print("Configurateur trouvé: \(isConfiguratorAvailable) à \(configuratorPath)")
+            
         } catch {
             errorMessage = "Erreur lors de la lecture du dossier: \(error.localizedDescription)"
             scripts = []
+            isConfiguratorAvailable = false // Pas de configurateur si on ne peut pas lire le dossier
         }
     }
     
-    // Exécute un script spécifique
     // Exécute un script spécifique
     private func executeScript(script: ScriptFile) {
         // Vérifier si ce script est déjà dans la liste des scripts exécutés
