@@ -24,6 +24,11 @@ struct ContentView: View {
     // Nouvelles propriétés pour la sélection multiple
     @State private var selectedScripts: [UUID] = []
     
+    // Propriétés pour les tags
+    @StateObject private var tagsViewModel = TagsViewModel()
+    // ID de rafraîchissement pour forcer la mise à jour des vues
+    @State private var viewRefreshID = UUID()
+    
     // Propriétés pour l'exécution multiple avec timer
     @StateObject private var runningScriptsVM = RunningScriptsViewModel()
     @StateObject private var scriptManager = ScriptProcessManager()
@@ -61,6 +66,18 @@ struct ContentView: View {
             4. Cliquez sur "Exécuter X scripts" pour lancer tous les scripts sélectionnés
             
             La sélection multiple vous permet d'automatiser plusieurs tâches simultanément.
+            """
+        ),
+        HelpSection(
+            title: "Gestion des tags",
+            content: """
+            Les tags vous permettent d'organiser vos scripts en groupes :
+            
+            1. Cliquez sur l'icône de tag à côté d'un script pour ajouter ou modifier ses tags
+            2. Vous pouvez créer de nouveaux tags avec des couleurs personnalisées
+            3. Utilisez les tags pour identifier rapidement les types de scripts
+            
+            Les tags sont automatiquement sauvegardés et conservés entre les sessions.
             """
         ),
         HelpSection(
@@ -129,6 +146,7 @@ struct ContentView: View {
                     HStack(alignment: .top, spacing: DesignSystem.spacing) {
                         scriptsSection
                             .frame(width: geometry.size.width * 0.62 - DesignSystem.spacing)
+                            .id(viewRefreshID) // Forcer le rechargement lors des modifications de tags
                         
                         VStack(spacing: DesignSystem.spacing) {
                             // Bouton de configuration
@@ -173,6 +191,7 @@ struct ContentView: View {
                     VStack(alignment: .leading, spacing: DesignSystem.spacing) {
                         scriptsSection
                             .frame(height: geometry.size.height * 0.5)
+                            .id(viewRefreshID) // Forcer le rechargement lors des modifications de tags
                         
                         VStack(spacing: DesignSystem.spacing) {
                             // Bouton de configuration
@@ -217,6 +236,7 @@ struct ContentView: View {
         .onAppear {
             loadScripts()
             loadFavorites()
+            loadScriptTags()
             
             // Chargement des préférences depuis le gestionnaire de configuration
             isDarkMode = ConfigManager.shared.isDarkMode
@@ -259,6 +279,9 @@ struct ContentView: View {
                     
                     // Recharger les favoris
                     loadFavorites()
+                    
+                    // Recharger les tags des scripts
+                    loadScriptTags()
                 }
             )
             
@@ -281,8 +304,10 @@ struct ContentView: View {
                     isDarkMode: isDarkMode,
                     showFavoritesOnly: showFavoritesOnly,
                     searchText: searchText,
+                    tagsViewModel: tagsViewModel,
                     onToggleSelect: toggleScriptSelection,
                     onToggleFavorite: toggleFavorite,
+                    onUpdateTags: updateScriptTags,
                     onSelectAll: selectAllScripts,
                     onUnselectAll: unselectAllScripts
                 )
@@ -292,8 +317,10 @@ struct ContentView: View {
                     isDarkMode: isDarkMode,
                     showFavoritesOnly: showFavoritesOnly,
                     searchText: searchText,
+                    tagsViewModel: tagsViewModel,
                     onToggleSelect: toggleScriptSelection,
                     onToggleFavorite: toggleFavorite,
+                    onUpdateTags: updateScriptTags,
                     onSelectAll: selectAllScripts,
                     onUnselectAll: unselectAllScripts
                 )
@@ -318,6 +345,29 @@ struct ContentView: View {
     }
     
     // MARK: - Functions
+    
+    // Fonction pour mettre à jour les tags d'un script
+    private func updateScriptTags(_ updatedScript: ScriptFile) {
+        if let index = scripts.firstIndex(where: { $0.id == updatedScript.id }) {
+            scripts[index].tags = updatedScript.tags
+            
+            // Mettre à jour les tags dans le ViewModel
+            tagsViewModel.updateScriptTags(scriptPath: updatedScript.path, tags: updatedScript.tags)
+            
+            // Forcer le rafraîchissement des vues
+            viewRefreshID = UUID()
+        }
+    }
+    
+    // Fonction pour charger les tags des scripts depuis le ViewModel
+    private func loadScriptTags() {
+        // Mettre à jour chaque script avec ses tags
+        for index in 0..<scripts.count {
+            let scriptPath = scripts[index].path
+            let tags = tagsViewModel.getTagsForScript(path: scriptPath)
+            scripts[index].tags = tags
+        }
+    }
     
     // Fonction pour lancer le script Configurator3000
     private func launchConfiguratorScript() {
@@ -404,6 +454,16 @@ struct ContentView: View {
             queue: .main
         ) { _ in
             selectAllScripts()
+        }
+        
+        // Observateur pour les modifications globales des tags
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("GlobalTagsChanged"),
+            object: nil,
+            queue: .main
+        ) { _ in
+            // Forcer le rafraîchissement de l'interface
+            viewRefreshID = UUID()
         }
     }
     

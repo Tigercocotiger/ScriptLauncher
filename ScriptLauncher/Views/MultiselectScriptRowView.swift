@@ -3,6 +3,7 @@
 //  ScriptLauncher
 //
 //  Created on 05/03/2025.
+//  Updated on 06/03/2025. - Added tags support
 //
 
 import SwiftUI
@@ -12,11 +13,14 @@ import Cocoa
 struct MultiselectScriptRowView: View {
     let script: ScriptFile
     let isDarkMode: Bool
+    let tagsViewModel: TagsViewModel
     let onToggleSelect: () -> Void
     let onFavorite: () -> Void
+    let onUpdateTags: (ScriptFile) -> Void
     
     @State private var scriptIcon: NSImage? = nil
     @State private var hasLoadedIcon: Bool = false
+    @State private var showTagsEditor: Bool = false
     
     // Extraire le nom du script sans l'extension
     private var scriptNameWithoutExtension: String {
@@ -70,6 +74,9 @@ struct MultiselectScriptRowView: View {
                 .foregroundColor(DesignSystem.textPrimary(for: isDarkMode))
                 .lineLimit(1)
             
+            // Affichage des tags
+            ScriptTagsDisplay(tags: script.tags, tagsViewModel: tagsViewModel)
+            
             Spacer()
             
             // Date d'exécution
@@ -77,6 +84,26 @@ struct MultiselectScriptRowView: View {
                 Text(timeAgo(from: lastExec))
                     .font(.caption)
                     .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
+            }
+            
+            // Bouton pour gérer les tags
+            Button(action: {
+                showTagsEditor = true
+            }) {
+                Image(systemName: "tag")
+                    .font(.system(size: 12))
+                    .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
+            }
+            .buttonStyle(PlainButtonStyle())
+            .opacity(0.6)
+            .help("Gérer les tags")
+            .sheet(isPresented: $showTagsEditor) {
+                ScriptTagsEditor(
+                    tagsViewModel: tagsViewModel,
+                    script: script,
+                    isPresented: $showTagsEditor,
+                    onSave: onUpdateTags
+                )
             }
             
             // Bouton favori
@@ -137,32 +164,66 @@ struct MultiselectScriptRowView: View {
 
 // MARK: - Preview
 #Preview("MultiselectScriptRowView - Mode clair") {
-    VStack(spacing: 8) {
+    // Créer un TagsViewModel pour la prévisualisation
+    let tagsViewModel = TagsViewModel()
+    tagsViewModel.addTag(name: "Important", color: .red)
+    tagsViewModel.addTag(name: "Automatisation", color: .blue)
+    
+    let script = ScriptFile(
+        name: "test_script.scpt",
+        path: "/Applications/Script Editor.app",
+        isFavorite: false,
+        lastExecuted: nil,
+        isSelected: false,
+        tags: ["Important"]
+    )
+    
+    return VStack(spacing: 8) {
         // Script normal
         MultiselectScriptRowView(
-            script: ScriptFile(name: "test_script.scpt", path: "/Applications/Script Editor.app", isFavorite: false, lastExecuted: nil, isSelected: false),
+            script: script,
             isDarkMode: false,
+            tagsViewModel: tagsViewModel,
             onToggleSelect: {},
-            onFavorite: {}
+            onFavorite: {},
+            onUpdateTags: { _ in }
         )
         .padding(.horizontal)
         .background(Color.white)
         
         // Script sélectionné
         MultiselectScriptRowView(
-            script: ScriptFile(name: "selected_script.scpt", path: "/Applications/Automator.app", isFavorite: false, lastExecuted: Date(), isSelected: true),
+            script: ScriptFile(
+                name: "selected_script.scpt",
+                path: "/Applications/Automator.app",
+                isFavorite: false,
+                lastExecuted: Date(),
+                isSelected: true,
+                tags: ["Automatisation"]
+            ),
             isDarkMode: false,
+            tagsViewModel: tagsViewModel,
             onToggleSelect: {},
-            onFavorite: {}
+            onFavorite: {},
+            onUpdateTags: { _ in }
         )
         .padding(.horizontal)
         
         // Script favori et sélectionné
         MultiselectScriptRowView(
-            script: ScriptFile(name: "favorite_script.scpt", path: "/System/Applications/Utilities/Terminal.app", isFavorite: true, lastExecuted: Date(), isSelected: true),
+            script: ScriptFile(
+                name: "favorite_script.scpt",
+                path: "/System/Applications/Utilities/Terminal.app",
+                isFavorite: true,
+                lastExecuted: Date(),
+                isSelected: true,
+                tags: ["Important", "Automatisation"]
+            ),
             isDarkMode: false,
+            tagsViewModel: tagsViewModel,
             onToggleSelect: {},
-            onFavorite: {}
+            onFavorite: {},
+            onUpdateTags: { _ in }
         )
         .padding(.horizontal)
     }
@@ -171,12 +232,24 @@ struct MultiselectScriptRowView: View {
 }
 
 #Preview("MultiselectScriptRowView - Mode sombre") {
-    VStack(spacing: 8) {
+    let tagsViewModel = TagsViewModel()
+    tagsViewModel.addTag(name: "Important", color: .red)
+    
+    return VStack(spacing: 8) {
         MultiselectScriptRowView(
-            script: ScriptFile(name: "dark_mode_script.applescript", path: "/System/Applications/Utilities/Console.app", isFavorite: false, lastExecuted: Date().addingTimeInterval(-3600), isSelected: true),
+            script: ScriptFile(
+                name: "dark_mode_script.applescript",
+                path: "/System/Applications/Utilities/Console.app",
+                isFavorite: false,
+                lastExecuted: Date().addingTimeInterval(-3600),
+                isSelected: true,
+                tags: ["Important"]
+            ),
             isDarkMode: true,
+            tagsViewModel: tagsViewModel,
             onToggleSelect: {},
-            onFavorite: {}
+            onFavorite: {},
+            onUpdateTags: { _ in }
         )
         .padding(.horizontal)
         .background(Color.black)

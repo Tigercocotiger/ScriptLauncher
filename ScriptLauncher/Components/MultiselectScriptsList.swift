@@ -3,14 +3,7 @@
 //  ScriptLauncher
 //
 //  Created by MacBook-16/M1P-001 on 05/03/2025.
-//
-
-
-//
-//  MultiselectScriptsList.swift
-//  ScriptLauncher
-//
-//  Created on 05/03/2025.
+//  Updated on 06/03/2025. - Added tags support
 //
 
 import SwiftUI
@@ -20,8 +13,10 @@ struct MultiselectScriptsList: View {
     let isDarkMode: Bool
     let showFavoritesOnly: Bool
     let searchText: String
+    let tagsViewModel: TagsViewModel
     let onToggleSelect: (ScriptFile) -> Void
     let onToggleFavorite: (ScriptFile) -> Void
+    let onUpdateTags: (ScriptFile) -> Void
     let onSelectAll: () -> Void
     let onUnselectAll: () -> Void
     
@@ -84,8 +79,10 @@ struct MultiselectScriptsList: View {
                         MultiselectScriptRowView(
                             script: script,
                             isDarkMode: isDarkMode,
+                            tagsViewModel: tagsViewModel,
                             onToggleSelect: { onToggleSelect(script) },
-                            onFavorite: { onToggleFavorite(script) }
+                            onFavorite: { onToggleFavorite(script) },
+                            onUpdateTags: { onUpdateTags($0) }
                         )
                         .padding(.horizontal, DesignSystem.spacing)
                         .padding(.vertical, 4)
@@ -121,17 +118,23 @@ struct MultiselectScriptsList: View {
 
 // MARK: - Preview
 #Preview("MultiselectScriptsList - Mode clair") {
-    MultiselectScriptsList(
+    let tagsViewModel = TagsViewModel()
+    tagsViewModel.addTag(name: "Important", color: .red)
+    tagsViewModel.addTag(name: "Automatisation", color: .blue)
+    
+    return MultiselectScriptsList(
         scripts: [
-            ScriptFile(name: "script1.scpt", path: "/path/1", isFavorite: true, lastExecuted: Date(), isSelected: true),
+            ScriptFile(name: "script1.scpt", path: "/path/1", isFavorite: true, lastExecuted: Date(), isSelected: true, tags: ["Important"]),
             ScriptFile(name: "script2.applescript", path: "/path/2", isFavorite: false, lastExecuted: nil, isSelected: false),
-            ScriptFile(name: "script3.scpt", path: "/path/3", isFavorite: false, lastExecuted: Date().addingTimeInterval(-3600), isSelected: true)
+            ScriptFile(name: "script3.scpt", path: "/path/3", isFavorite: false, lastExecuted: Date().addingTimeInterval(-3600), isSelected: true, tags: ["Automatisation"])
         ],
         isDarkMode: false,
         showFavoritesOnly: false,
         searchText: "",
+        tagsViewModel: tagsViewModel,
         onToggleSelect: { _ in },
         onToggleFavorite: { _ in },
+        onUpdateTags: { _ in },
         onSelectAll: {},
         onUnselectAll: {}
     )
@@ -140,13 +143,17 @@ struct MultiselectScriptsList: View {
 }
 
 #Preview("MultiselectScriptsList - Vide") {
-    MultiselectScriptsList(
+    let tagsViewModel = TagsViewModel()
+    
+    return MultiselectScriptsList(
         scripts: [],
         isDarkMode: true,
         showFavoritesOnly: false,
         searchText: "introuvable",
+        tagsViewModel: tagsViewModel,
         onToggleSelect: { _ in },
         onToggleFavorite: { _ in },
+        onUpdateTags: { _ in },
         onSelectAll: {},
         onUnselectAll: {}
     )

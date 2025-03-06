@@ -3,6 +3,7 @@
 //  ScriptLauncher
 //
 //  Created on 05/03/2025.
+//  Updated on 06/03/2025. - Added tags support
 //
 
 import Foundation
@@ -12,6 +13,8 @@ struct AppConfig: Codable {
     var isDarkMode: Bool = false
     var isGridView: Bool = false
     var lastOpenedFolderPath: String = "/Volumes/Marco/Dév/Fonctionnel"
+    var tags: [TagConfig] = [] // Liste des tags disponibles
+    var scriptTags: [String: Set<String>] = [:] // Associations script path -> tags
 }
 
 class ConfigManager {
@@ -133,6 +136,23 @@ class ConfigManager {
                 
                 saveConfig()
             }
+        }
+    }
+    
+    // Accesseurs pour les tags
+    var tags: [TagConfig] {
+        get { config.tags }
+        set {
+            config.tags = newValue
+            saveConfig()
+        }
+    }
+    
+    var scriptTags: [String: Set<String>] {
+        get { config.scriptTags }
+        set {
+            config.scriptTags = newValue
+            saveConfig()
         }
     }
 }

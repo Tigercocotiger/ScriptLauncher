@@ -4,6 +4,7 @@
 //
 //  Created by MacBook-16/M1P-001 on 25/02/2025.
 //  Modified on 05/03/2025.
+//  Modified on 06/03/2025. - Added tags support
 //
 
 import SwiftUI
@@ -17,6 +18,7 @@ struct ScriptFile: Identifiable, Hashable {
     var isFavorite: Bool
     var lastExecuted: Date?
     var isSelected: Bool = false
+    var tags: Set<String> = [] // Nouveau champ pour les tags
     
     // Nouvelles propriétés pour l'exécution multiple
     var isRunning: Bool = false

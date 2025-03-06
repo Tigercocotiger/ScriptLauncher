@@ -3,6 +3,7 @@
 //  ScriptLauncher
 //
 //  Created on 05/03/2025.
+//  Updated on 06/03/2025. - Added tags support
 //
 
 import SwiftUI
@@ -13,8 +14,10 @@ struct MultiselectScriptGridView: View {
     let isDarkMode: Bool
     let showFavoritesOnly: Bool
     let searchText: String
+    let tagsViewModel: TagsViewModel
     let onToggleSelect: (ScriptFile) -> Void
     let onToggleFavorite: (ScriptFile) -> Void
+    let onUpdateTags: (ScriptFile) -> Void
     let onSelectAll: () -> Void
     let onUnselectAll: () -> Void
     
@@ -95,10 +98,12 @@ struct MultiselectScriptGridView: View {
                             MultiselectScriptGridItemView(
                                 script: script,
                                 isDarkMode: isDarkMode,
+                                tagsViewModel: tagsViewModel,
                                 onToggleSelect: { onToggleSelect(script) },
-                                onFavorite: { onToggleFavorite(script) }
+                                onFavorite: { onToggleFavorite(script) },
+                                onUpdateTags: { onUpdateTags($0) }
                             )
-                            .frame(width: 160, height: 180) // Hauteur réduite car on a supprimé les boutons
+                            .frame(width: 160, height: 180)
                         }
                     }
                     .padding(.vertical, DesignSystem.spacing)
@@ -112,11 +117,14 @@ struct MultiselectScriptGridView: View {
 struct MultiselectScriptGridItemView: View {
     let script: ScriptFile
     let isDarkMode: Bool
+    let tagsViewModel: TagsViewModel
     let onToggleSelect: () -> Void
     let onFavorite: () -> Void
+    let onUpdateTags: (ScriptFile) -> Void
     
     @State private var scriptIcon: NSImage? = nil
     @State private var hasLoadedIcon: Bool = false
+    @State private var showTagsEditor: Bool = false
     
     // Extraire le nom du script sans l'extension
     private var scriptNameWithoutExtension: String {
@@ -177,8 +185,33 @@ struct MultiselectScriptGridItemView: View {
                 .buttonStyle(PlainButtonStyle())
                 .position(x: 10, y: 10)
                 .help(script.isFavorite ? "Retirer des favoris" : "Ajouter aux favoris")
+                
+                // Bouton pour gérer les tags en bas à droite
+                Button(action: {
+                    showTagsEditor = true
+                }) {
+                    Circle()
+                        .fill(!script.tags.isEmpty ? DesignSystem.accentColor(for: isDarkMode) : Color.gray.opacity(0.3))
+                        .frame(width: 24, height: 24)
+                        .overlay(
+                            Image(systemName: "tag.fill")
+                                .font(.system(size: 10))
+                                .foregroundColor(!script.tags.isEmpty ? .white : Color.gray.opacity(0.7))
+                        )
+                }
+                .buttonStyle(PlainButtonStyle())
+                .position(x: 70, y: 70)
+                .help("Gérer les tags")
+                .sheet(isPresented: $showTagsEditor) {
+                    ScriptTagsEditor(
+                        tagsViewModel: tagsViewModel,
+                        script: script,
+                        isPresented: $showTagsEditor,
+                        onSave: onUpdateTags
+                    )
+                }
             }
-            .frame(width: 90, height: 90) // Taille fixe légèrement agrandie
+            .frame(width: 90, height: 90)
             .padding(.top, 12)
             .padding(.bottom, 8)
             
@@ -188,8 +221,17 @@ struct MultiselectScriptGridItemView: View {
                 .foregroundColor(DesignSystem.textPrimary(for: isDarkMode))
                 .lineLimit(2)
                 .multilineTextAlignment(.center)
-                .frame(width: 140, height: 32) // Taille fixe
+                .frame(width: 140, height: 32)
                 .padding(.bottom, 4)
+            
+            // Tags visuels sous le nom
+            if !script.tags.isEmpty {
+                HStack(spacing: 4) {
+                    ScriptTagsDisplay(tags: script.tags, tagsViewModel: tagsViewModel)
+                }
+                .frame(height: 12)
+                .padding(.bottom, 4)
+            }
             
             // Date d'exécution
             ZStack {
@@ -204,11 +246,11 @@ struct MultiselectScriptGridItemView: View {
                         .opacity(0.6)
                 }
             }
-            .frame(height: 16) // Hauteur fixe
+            .frame(height: 16)
             
             Spacer()
         }
-        .frame(width: 160, height: 180) // Taille totale fixe réduite
+        .frame(width: 160, height: 180)
         .background(
             RoundedRectangle(cornerRadius: DesignSystem.smallCornerRadius)
                 .fill(script.isSelected
@@ -264,18 +306,24 @@ struct MultiselectScriptGridItemView: View {
 
 // MARK: - Preview
 #Preview("MultiselectScriptGridView - Mode clair") {
-    MultiselectScriptGridView(
+    let tagsViewModel = TagsViewModel()
+    tagsViewModel.addTag(name: "Important", color: .red)
+    tagsViewModel.addTag(name: "Automatisation", color: .blue)
+    
+    return MultiselectScriptGridView(
         scripts: [
-            ScriptFile(name: "script1.scpt", path: "/path/1", isFavorite: true, lastExecuted: Date(), isSelected: true),
+            ScriptFile(name: "script1.scpt", path: "/path/1", isFavorite: true, lastExecuted: Date(), isSelected: true, tags: ["Important"]),
             ScriptFile(name: "script2.applescript", path: "/path/2", isFavorite: false, lastExecuted: nil, isSelected: false),
-            ScriptFile(name: "script3.scpt", path: "/path/3", isFavorite: false, lastExecuted: Date().addingTimeInterval(-3600), isSelected: true),
-            ScriptFile(name: "script_with_very_long_name.scpt", path: "/path/4", isFavorite: true, lastExecuted: Date().addingTimeInterval(-86400), isSelected: false)
+            ScriptFile(name: "script3.scpt", path: "/path/3", isFavorite: false, lastExecuted: Date().addingTimeInterval(-3600), isSelected: true, tags: ["Automatisation"]),
+            ScriptFile(name: "script_with_very_long_name.scpt", path: "/path/4", isFavorite: true, lastExecuted: Date().addingTimeInterval(-86400), isSelected: false, tags: ["Important", "Automatisation"])
         ],
         isDarkMode: false,
         showFavoritesOnly: false,
         searchText: "",
+        tagsViewModel: tagsViewModel,
         onToggleSelect: { _ in },
         onToggleFavorite: { _ in },
+        onUpdateTags: { _ in },
         onSelectAll: {},
         onUnselectAll: {}
     )
