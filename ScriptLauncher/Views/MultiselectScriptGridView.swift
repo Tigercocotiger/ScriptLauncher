@@ -4,6 +4,7 @@
 //
 //  Created on 05/03/2025.
 //  Updated on 06/03/2025. - Added tags support
+//  Updated on 07/03/2025. - Added tag color backgrounds with sections
 //
 
 import SwiftUI
@@ -135,16 +136,58 @@ struct MultiselectScriptGridItemView: View {
         return name
     }
     
+    // Obtenir les couleurs des tags pour le script
+    private var tagColors: [Color] {
+        // Si sélectionné, utiliser uniquement la couleur d'accent
+        if script.isSelected {
+            return [DesignSystem.accentColor(for: isDarkMode).opacity(0.2)]
+        }
+        
+        // Récupérer les couleurs des tags associés au script
+        let colors = script.tags.compactMap { tagName in
+            tagsViewModel.getTag(name: tagName)?.color
+        }
+        
+        // Si pas de tags ou pas de couleurs, retourner la couleur par défaut
+        if colors.isEmpty {
+            return [isDarkMode ? Color(white: 0.25) : Color(white: 0.95)]
+        }
+        
+        // Appliquer l'opacité aux couleurs
+        return colors.map { $0.opacity(isDarkMode ? 0.3 : 0.2) }
+    }
+    
+    // Vue personnalisée pour le fond divisé par couleurs de tags
+    private var tagSectionBackground: some View {
+        ZStack {
+            // Cercle de base pour le fond
+            Circle()
+                .fill(isDarkMode ? Color(white: 0.2) : Color(white: 0.93))
+                .frame(width: 80, height: 80)
+            
+            // Superposer les sections pour chaque tag
+            ForEach(0..<tagColors.count, id: \.self) { index in
+                TagSectionShape(
+                    sectionCount: tagColors.count,
+                    sectionIndex: index
+                )
+                .fill(tagColors[index])
+                .frame(width: 80, height: 80)
+            }
+            
+            // Contour pour unifier l'ensemble
+            Circle()
+                .stroke(Color.gray.opacity(0.15), lineWidth: 1)
+                .frame(width: 80, height: 80)
+        }
+    }
+    
     var body: some View {
         VStack(alignment: .center, spacing: 0) {
             // Partie supérieure avec icône centrée
             ZStack {
-                // Cercle de fond
-                Circle()
-                    .fill(script.isSelected
-                          ? DesignSystem.accentColor(for: isDarkMode).opacity(0.2)
-                          : (isDarkMode ? Color(white: 0.25) : Color(white: 0.95)))
-                    .frame(width: 80, height: 80)
+                // Fond divisé par sections de couleurs de tags
+                tagSectionBackground
                 
                 // Icône du script
                 if hasLoadedIcon, let icon = scriptIcon {
@@ -304,18 +347,50 @@ struct MultiselectScriptGridItemView: View {
     }
 }
 
+// Forme personnalisée pour créer une section du cercle
+struct TagSectionShape: Shape {
+    let sectionCount: Int
+    let sectionIndex: Int
+    
+    func path(in rect: CGRect) -> Path {
+        let center = CGPoint(x: rect.midX, y: rect.midY)
+        let radius = min(rect.width, rect.height) / 2
+        
+        // Calculer les angles de début et de fin pour cette section
+        let angleSize = 2 * CGFloat.pi / CGFloat(sectionCount)
+        let startAngle = angleSize * CGFloat(sectionIndex) - CGFloat.pi / 2
+        let endAngle = startAngle + angleSize
+        
+        var path = Path()
+        path.move(to: center)
+        path.addArc(center: center,
+                    radius: radius,
+                    startAngle: Angle(radians: Double(startAngle)),
+                    endAngle: Angle(radians: Double(endAngle)),
+                    clockwise: false)
+        path.closeSubpath()
+        
+        return path
+    }
+}
+
 // MARK: - Preview
 #Preview("MultiselectScriptGridView - Mode clair") {
     let tagsViewModel = TagsViewModel()
     tagsViewModel.addTag(name: "Important", color: .red)
     tagsViewModel.addTag(name: "Automatisation", color: .blue)
+    tagsViewModel.addTag(name: "Maintenance", color: .green)
+    tagsViewModel.addTag(name: "Documentation", color: .orange)
+    tagsViewModel.addTag(name: "Backup", color: .purple)
     
     return MultiselectScriptGridView(
         scripts: [
             ScriptFile(name: "script1.scpt", path: "/path/1", isFavorite: true, lastExecuted: Date(), isSelected: true, tags: ["Important"]),
             ScriptFile(name: "script2.applescript", path: "/path/2", isFavorite: false, lastExecuted: nil, isSelected: false),
-            ScriptFile(name: "script3.scpt", path: "/path/3", isFavorite: false, lastExecuted: Date().addingTimeInterval(-3600), isSelected: true, tags: ["Automatisation"]),
-            ScriptFile(name: "script_with_very_long_name.scpt", path: "/path/4", isFavorite: true, lastExecuted: Date().addingTimeInterval(-86400), isSelected: false, tags: ["Important", "Automatisation"])
+            ScriptFile(name: "script3.scpt", path: "/path/3", isFavorite: false, lastExecuted: Date().addingTimeInterval(-3600), isSelected: false, tags: ["Automatisation"]),
+            ScriptFile(name: "script4.scpt", path: "/path/4", isFavorite: true, lastExecuted: Date().addingTimeInterval(-86400), isSelected: false, tags: ["Important", "Automatisation"]),
+            ScriptFile(name: "script5.scpt", path: "/path/5", isFavorite: false, lastExecuted: Date(), isSelected: false, tags: ["Important", "Automatisation", "Maintenance"]),
+            ScriptFile(name: "script6.scpt", path: "/path/6", isFavorite: false, lastExecuted: Date(), isSelected: false, tags: ["Documentation", "Automatisation", "Backup", "Maintenance"]),
         ],
         isDarkMode: false,
         showFavoritesOnly: false,
@@ -329,4 +404,33 @@ struct MultiselectScriptGridItemView: View {
     )
     .frame(width: 600, height: 400)
     .background(Color.white)
+}
+
+#Preview("MultiselectScriptGridView - Mode sombre") {
+    let tagsViewModel = TagsViewModel()
+    tagsViewModel.addTag(name: "Important", color: .red)
+    tagsViewModel.addTag(name: "Automatisation", color: .blue)
+    tagsViewModel.addTag(name: "Maintenance", color: .green)
+    tagsViewModel.addTag(name: "Documentation", color: .orange)
+    
+    return MultiselectScriptGridView(
+        scripts: [
+            ScriptFile(name: "script1.scpt", path: "/path/1", isFavorite: true, lastExecuted: Date(), isSelected: false, tags: ["Important"]),
+            ScriptFile(name: "script2.applescript", path: "/path/2", isFavorite: false, lastExecuted: nil, isSelected: false),
+            ScriptFile(name: "script3.scpt", path: "/path/3", isFavorite: false, lastExecuted: Date().addingTimeInterval(-3600), isSelected: false, tags: ["Automatisation"]),
+            ScriptFile(name: "script4.scpt", path: "/path/4", isFavorite: true, lastExecuted: Date().addingTimeInterval(-86400), isSelected: true, tags: ["Important", "Automatisation"]),
+            ScriptFile(name: "script5.scpt", path: "/path/5", isFavorite: false, lastExecuted: Date(), isSelected: false, tags: ["Important", "Automatisation", "Maintenance", "Documentation"]),
+        ],
+        isDarkMode: true,
+        showFavoritesOnly: false,
+        searchText: "",
+        tagsViewModel: tagsViewModel,
+        onToggleSelect: { _ in },
+        onToggleFavorite: { _ in },
+        onUpdateTags: { _ in },
+        onSelectAll: {},
+        onUnselectAll: {}
+    )
+    .frame(width: 600, height: 400)
+    .background(Color.black)
 }
