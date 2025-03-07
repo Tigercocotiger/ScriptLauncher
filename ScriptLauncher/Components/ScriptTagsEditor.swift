@@ -7,6 +7,9 @@ struct ScriptTagsEditor: View {
     @Binding var isPresented: Bool
     var onSave: (ScriptFile) -> Void
     
+    // Ajouter la propriété isDarkMode pour respecter le thème de l'application
+    let isDarkMode: Bool
+    
     @State private var selectedTags: Set<String>
     @State private var initialTags: Set<String> // Pour stocker les tags initiaux
     @State private var newTagName: String = ""
@@ -32,10 +35,11 @@ struct ScriptTagsEditor: View {
         return selectedTags != initialTags || tagsModified
     }
     
-    init(tagsViewModel: TagsViewModel, script: ScriptFile, isPresented: Binding<Bool>, onSave: @escaping (ScriptFile) -> Void) {
+    init(tagsViewModel: TagsViewModel, script: ScriptFile, isPresented: Binding<Bool>, isDarkMode: Bool, onSave: @escaping (ScriptFile) -> Void) {
         self.tagsViewModel = tagsViewModel
         self.script = script
         self._isPresented = isPresented
+        self.isDarkMode = isDarkMode
         self.onSave = onSave
         self._selectedTags = State(initialValue: script.tags)
         self._initialTags = State(initialValue: script.tags) // Stocker la valeur initiale
@@ -46,9 +50,10 @@ struct ScriptTagsEditor: View {
             HStack {
                 Text("Modifier les tags pour")
                     .font(.headline)
+                    .foregroundColor(DesignSystem.textPrimary(for: isDarkMode))
                 Text(script.name)
                     .font(.headline)
-                    .foregroundColor(.accentColor)
+                    .foregroundColor(DesignSystem.accentColor(for: isDarkMode))
                     .lineLimit(1)
                 
                 Spacer()
@@ -61,7 +66,7 @@ struct ScriptTagsEditor: View {
                 }) {
                     Image(systemName: "xmark.circle.fill")
                         .font(.title2)
-                        .foregroundColor(.gray)
+                        .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
                 }
                 .buttonStyle(PlainButtonStyle())
             }
@@ -72,7 +77,7 @@ struct ScriptTagsEditor: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Modifier le tag")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
                     
                     HStack {
                         // Bouton de couleur personnalisé avec l'ID de rafraîchissement
@@ -86,21 +91,40 @@ struct ScriptTagsEditor: View {
                                 .frame(width: 24, height: 24)
                                 .overlay(
                                     Circle()
-                                        .stroke(Color.gray.opacity(0.5), lineWidth: 1)
+                                        .stroke(DesignSystem.textSecondary(for: isDarkMode).opacity(0.5), lineWidth: 1)
                                 )
                         }
                         .buttonStyle(PlainButtonStyle())
                         .id(refreshID) // Forcer le rafraîchissement de la vue
                         
-                        TextField("Nom du tag", text: $editTagName)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                        // TextField personnalisé pour le mode sombre
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(isDarkMode ? Color(red: 0.3, green: 0.3, blue: 0.32) : Color.white)
+                                .frame(height: 30)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .stroke(isDarkMode ? Color(red: 0.4, green: 0.4, blue: 0.42) : Color.gray.opacity(0.5), lineWidth: 1)
+                                )
+                            
+                            TextField("Nom du tag", text: $editTagName)
+                                .padding(.horizontal, 8)
+                                .foregroundColor(DesignSystem.textPrimary(for: isDarkMode))
+                        }
+                        .frame(height: 30)
                         
                         Button(action: {
                             saveTagEdit()
                         }) {
                             Text("Mettre à jour")
                                 .font(.caption)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .foregroundColor(isDarkMode ? .white : DesignSystem.accentColor(for: isDarkMode))
+                                .background(isDarkMode ? DesignSystem.accentColor(for: isDarkMode).opacity(0.8) : Color.clear)
+                                .cornerRadius(4)
                         }
+                        .buttonStyle(PlainButtonStyle())
                         .disabled(editTagName.isEmpty)
                         
                         Button(action: {
@@ -108,12 +132,17 @@ struct ScriptTagsEditor: View {
                         }) {
                             Text("Annuler")
                                 .font(.caption)
-                                .foregroundColor(.red)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .foregroundColor(isDarkMode ? .white : .red)
+                                .background(isDarkMode ? Color.red.opacity(0.8) : Color.clear)
+                                .cornerRadius(4)
                         }
+                        .buttonStyle(PlainButtonStyle())
                     }
                 }
                 .padding(8)
-                .background(Color.gray.opacity(0.1))
+                .background(isDarkMode ? Color(red: 0.22, green: 0.22, blue: 0.24) : Color.gray.opacity(0.1))
                 .cornerRadius(8)
                 .padding(.bottom, 8)
                 .id(refreshID) // Forcer le rafraîchissement de la vue
@@ -122,7 +151,7 @@ struct ScriptTagsEditor: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Nouveau tag")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
                     
                     HStack {
                         // Bouton de couleur personnalisé
@@ -136,14 +165,27 @@ struct ScriptTagsEditor: View {
                                 .frame(width: 24, height: 24)
                                 .overlay(
                                     Circle()
-                                        .stroke(Color.gray.opacity(0.5), lineWidth: 1)
+                                        .stroke(DesignSystem.textSecondary(for: isDarkMode).opacity(0.5), lineWidth: 1)
                                 )
                         }
                         .buttonStyle(PlainButtonStyle())
                         .id(refreshID) // Forcer le rafraîchissement de la vue
                         
-                        TextField("Nom du tag", text: $newTagName)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                        // TextField personnalisé pour le mode sombre
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(isDarkMode ? Color(red: 0.3, green: 0.3, blue: 0.32) : Color.white)
+                                .frame(height: 30)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .stroke(isDarkMode ? Color(red: 0.4, green: 0.4, blue: 0.42) : Color.gray.opacity(0.5), lineWidth: 1)
+                                )
+                            
+                            TextField("Nom du tag", text: $newTagName)
+                                .padding(.horizontal, 8)
+                                .foregroundColor(DesignSystem.textPrimary(for: isDarkMode))
+                        }
+                        .frame(height: 30)
                         
                         Button(action: {
                             if !newTagName.isEmpty {
@@ -157,7 +199,13 @@ struct ScriptTagsEditor: View {
                         }) {
                             Text("Ajouter")
                                 .font(.caption)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .foregroundColor(isDarkMode ? .white : DesignSystem.accentColor(for: isDarkMode))
+                                .background(isDarkMode ? DesignSystem.accentColor(for: isDarkMode).opacity(0.8) : Color.clear)
+                                .cornerRadius(4)
                         }
+                        .buttonStyle(PlainButtonStyle())
                         .disabled(newTagName.isEmpty)
                         
                         Button(action: {
@@ -166,12 +214,17 @@ struct ScriptTagsEditor: View {
                         }) {
                             Text("Annuler")
                                 .font(.caption)
-                                .foregroundColor(.red)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .foregroundColor(isDarkMode ? .white : .red)
+                                .background(isDarkMode ? Color.red.opacity(0.8) : Color.clear)
+                                .cornerRadius(4)
                         }
+                        .buttonStyle(PlainButtonStyle())
                     }
                 }
                 .padding(8)
-                .background(Color.gray.opacity(0.1))
+                .background(isDarkMode ? Color(red: 0.22, green: 0.22, blue: 0.24) : Color.gray.opacity(0.1))
                 .cornerRadius(8)
                 .padding(.bottom, 8)
                 .id(refreshID) // Forcer le rafraîchissement de la vue
@@ -182,7 +235,13 @@ struct ScriptTagsEditor: View {
                 }) {
                     Label("Ajouter un nouveau tag", systemImage: "plus.circle")
                         .font(.caption)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .foregroundColor(isDarkMode ? .white : DesignSystem.accentColor(for: isDarkMode))
+                        .background(isDarkMode ? DesignSystem.accentColor(for: isDarkMode).opacity(0.7) : Color.clear)
+                        .cornerRadius(6)
                 }
+                .buttonStyle(PlainButtonStyle())
                 .padding(.bottom, 8)
             }
             
@@ -200,14 +259,14 @@ struct ScriptTagsEditor: View {
                             }) {
                                 HStack {
                                     Image(systemName: selectedTags.contains(tag.name) ? "checkmark.square.fill" : "square")
-                                        .foregroundColor(selectedTags.contains(tag.name) ? tag.color : .gray)
+                                        .foregroundColor(selectedTags.contains(tag.name) ? tag.color : DesignSystem.textSecondary(for: isDarkMode))
                                     
                                     Circle()
                                         .fill(tag.color)
                                         .frame(width: 12, height: 12)
                                     
                                     Text(tag.name)
-                                        .foregroundColor(.primary)
+                                        .foregroundColor(DesignSystem.textPrimary(for: isDarkMode))
                                 }
                                 .contentShape(Rectangle())
                             }
@@ -221,7 +280,7 @@ struct ScriptTagsEditor: View {
                             }) {
                                 Image(systemName: "pencil")
                                     .font(.caption)
-                                    .foregroundColor(.gray)
+                                    .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
                             }
                             .buttonStyle(PlainButtonStyle())
                             .opacity(0.6)
@@ -244,7 +303,7 @@ struct ScriptTagsEditor: View {
                         .id("\(tag.id)-\(refreshID)") // Force le rafraîchissement des tags
                     }
                 }
-                .background(Color.gray.opacity(0.05))
+                .background(isDarkMode ? Color(red: 0.18, green: 0.18, blue: 0.2) : Color.gray.opacity(0.05))
                 .cornerRadius(8)
                 .id(refreshID) // Forcer le rafraîchissement de la vue
             }
@@ -260,6 +319,9 @@ struct ScriptTagsEditor: View {
                     isPresented = false
                 }
                 .keyboardShortcut(.escape, modifiers: [])
+                .foregroundColor(DesignSystem.textPrimary(for: isDarkMode))
+                .buttonStyle(BorderedButtonStyle())
+                .background(isDarkMode ? Color(red: 0.25, green: 0.25, blue: 0.27) : Color.white)
                 
                 Button("Enregistrer") {
                     closeColorPickers()
@@ -276,11 +338,13 @@ struct ScriptTagsEditor: View {
                 }
                 .keyboardShortcut(.return, modifiers: [])
                 .buttonStyle(.borderedProminent)
+                .tint(DesignSystem.accentColor(for: isDarkMode))
                 .disabled(!hasChanges) // Désactiver si aucun changement
             }
         }
         .padding()
         .frame(width: 350, height: 400)
+        .background(DesignSystem.backgroundColor(for: isDarkMode))
         .id(refreshID) // Forcer le rafraîchissement de toute la vue
         .onAppear {
             // Sauvegarder l'état initial des tags
@@ -435,51 +499,8 @@ struct ScriptTagsEditor: View {
     }
 }
 
-// Composant pour afficher les tags d'un script dans la vue liste/grille
-struct ScriptTagsDisplay: View {
-    let tags: Set<String>
-    let tagsViewModel: TagsViewModel
-    
-    // Identifiant de la vue pour forcer la mise à jour
-    @State private var viewID = UUID()
-    
-    var body: some View {
-        if !tags.isEmpty {
-            HStack(spacing: 2) {
-                ForEach(Array(tags).prefix(3), id: \.self) { tagName in
-                    if let tag = tagsViewModel.getTag(name: tagName) {
-                        Circle()
-                            .fill(tag.color)
-                            .frame(width: 6, height: 6)
-                    }
-                }
-                
-                if tags.count > 3 {
-                    Text("+\(tags.count - 3)")
-                        .font(.system(size: 8))
-                        .foregroundColor(.gray)
-                }
-            }
-            .id(viewID) // Force le rafraîchissement
-            .onAppear {
-                // S'abonner aux notifications de changement de tags
-                NotificationCenter.default.addObserver(forName: NSNotification.Name("GlobalTagsChanged"), object: nil, queue: .main) { _ in
-                    // Forcer le rafraîchissement
-                    viewID = UUID()
-                }
-            }
-            .onDisappear {
-                // Se désabonner des notifications
-                NotificationCenter.default.removeObserver(self, name: NSNotification.Name("GlobalTagsChanged"), object: nil)
-            }
-        } else {
-            EmptyView()
-        }
-    }
-}
-
 // MARK: - Preview
-#Preview("ScriptTagsEditor") {
+#Preview("ScriptTagsEditor - Mode clair") {
     let tagsViewModel = TagsViewModel()
     // Ajouter quelques tags de test
     tagsViewModel.addTag(name: "Important", color: .red)
@@ -498,7 +519,31 @@ struct ScriptTagsDisplay: View {
         tagsViewModel: tagsViewModel,
         script: script,
         isPresented: .constant(true),
+        isDarkMode: false,
         onSave: { _ in }
     )
-    .padding()
+}
+
+#Preview("ScriptTagsEditor - Mode sombre") {
+    let tagsViewModel = TagsViewModel()
+    // Ajouter quelques tags de test
+    tagsViewModel.addTag(name: "Important", color: .red)
+    tagsViewModel.addTag(name: "Automatisation", color: .blue)
+    tagsViewModel.addTag(name: "Maintenance", color: .green)
+    
+    let script = ScriptFile(
+        name: "exemple_script.scpt",
+        path: "/path/to/script",
+        isFavorite: true,
+        lastExecuted: Date(),
+        tags: ["Important", "Maintenance"]
+    )
+    
+    return ScriptTagsEditor(
+        tagsViewModel: tagsViewModel,
+        script: script,
+        isPresented: .constant(true),
+        isDarkMode: true,
+        onSave: { _ in }
+    )
 }

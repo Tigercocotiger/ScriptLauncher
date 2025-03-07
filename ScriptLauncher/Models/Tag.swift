@@ -48,3 +48,46 @@ struct TagConfig: Codable {
     let name: String
     let colorHex: String
 }
+
+// Composant pour afficher les tags d'un script dans la vue liste/grille
+struct ScriptTagsDisplay: View {
+    let tags: Set<String>
+    let tagsViewModel: TagsViewModel
+    
+    // Identifiant de la vue pour forcer la mise à jour
+    @State private var viewID = UUID()
+    
+    var body: some View {
+        if !tags.isEmpty {
+            HStack(spacing: 2) {
+                ForEach(Array(tags).prefix(3), id: \.self) { tagName in
+                    if let tag = tagsViewModel.getTag(name: tagName) {
+                        Circle()
+                            .fill(tag.color)
+                            .frame(width: 6, height: 6)
+                    }
+                }
+                
+                if tags.count > 3 {
+                    Text("+\(tags.count - 3)")
+                        .font(.system(size: 8))
+                        .foregroundColor(.gray)
+                }
+            }
+            .id(viewID) // Force le rafraîchissement
+            .onAppear {
+                // S'abonner aux notifications de changement de tags
+                NotificationCenter.default.addObserver(forName: NSNotification.Name("GlobalTagsChanged"), object: nil, queue: .main) { _ in
+                    // Forcer le rafraîchissement
+                    viewID = UUID()
+                }
+            }
+            .onDisappear {
+                // Se désabonner des notifications
+                NotificationCenter.default.removeObserver(self, name: NSNotification.Name("GlobalTagsChanged"), object: nil)
+            }
+        } else {
+            EmptyView()
+        }
+    }
+}

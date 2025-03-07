@@ -250,6 +250,7 @@ struct MultiselectScriptGridItemView: View {
                         tagsViewModel: tagsViewModel,
                         script: script,
                         isPresented: $showTagsEditor,
+                        isDarkMode: isDarkMode, // Ajout du paramètre isDarkMode
                         onSave: onUpdateTags
                     )
                 }
