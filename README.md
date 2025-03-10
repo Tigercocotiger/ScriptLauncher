@@ -1,4 +1,4 @@
-# 🚀 ScriptLauncher [![Télécharger la dernière version](https://img.shields.io/badge/Télécharger-v1.0-blue.svg?style=for-the-badge&logo=apple)](https://github.com/tigercocotiger/ScriptLauncher/releases/latest)
+# 🚀 ScriptLauncher [![Télécharger la dernière version](https://img.shields.io/badge/Télécharger-v1.1-blue.svg?style=for-the-badge&logo=apple)](https://github.com/tigercocotiger/ScriptLauncher/releases/latest)
 
 ScriptLauncher est une application macOS moderne permettant d'organiser, gérer et exécuter vos scripts AppleScript et .scpt plus facilement. Cette interface élégante vous offre une expérience fluide pour lancer vos automatisations.
 
@@ -10,11 +10,13 @@ ScriptLauncher est une application macOS moderne permettant d'organiser, gérer 
 - **📜 Historique d'exécution** - Conserve l'historique des scripts exécutés (succès/échec)
 - **⭐ Gestion des favoris** - Marquez vos scripts les plus utilisés pour un accès rapide
 - **🔍 Recherche instantanée** - Trouvez rapidement vos scripts par leur nom
+- **🏷️ Système de tags** - Catégorisez vos scripts avec des tags colorés personnalisables
 - **📊 Vue liste et grille** - Choisissez le mode d'affichage qui vous convient
 - **📤 Exécution en temps réel** - Visualisez la sortie de vos scripts pendant leur exécution
 - **⌨️ Raccourcis clavier** - Naviguez et exécutez vos scripts efficacement
 - **📂 Sélection de dossier** - Changez facilement le dossier cible des scripts
 - **💾 Configuration portable** - Vos préférences sont conservées même sur clé USB
+- **📥 Créateur d'installateurs DMG** - Générez facilement des scripts d'installation pour vos DMG
 
 ## 📋 Prérequis
 
@@ -28,7 +30,7 @@ ScriptLauncher est une application macOS moderne permettant d'organiser, gérer 
 3. Compilez et exécutez l'application
 
 ```bash
-git clone https://github.com/votre-nom/ScriptLauncher.git
+git clone https://github.com/tigercocotiger/ScriptLauncher.git
 cd ScriptLauncher
 open ScriptLauncher.xcodeproj
 ```
@@ -54,6 +56,7 @@ Pour changer le dossier cible des scripts :
 - `⌘ + D` : Basculer entre mode clair et sombre
 - `⌘ + I` : Afficher/masquer l'aide
 - `⌘ + .` : Arrêter tous les scripts en cours
+- `⌘ + ⇧ + N` : Créer un installateur DMG
 - `Échap` : Annuler la recherche
 
 ### 📋 Sélection multiple
@@ -64,6 +67,26 @@ Vous pouvez sélectionner plusieurs scripts pour les exécuter en même temps :
 2. Utilisez le raccourci `⌘ + ⌥ + A` pour sélectionner tous les scripts visibles
 3. Utilisez les boutons "Tout sélectionner" ou "Désélectionner tout"
 4. Cliquez sur "Exécuter X scripts" pour lancer tous les scripts sélectionnés
+
+### 🏷️ Gestion des tags
+
+Le système de tags vous permet de catégoriser vos scripts :
+
+1. Cliquez sur l'icône de tag à côté d'un script pour gérer ses tags
+2. Créez de nouveaux tags avec des couleurs personnalisées
+3. Attribuez plusieurs tags à un même script
+4. Visualisez les tags associés directement dans la liste des scripts
+
+### 📥 Créateur d'installateurs DMG
+
+Créez facilement des scripts d'installation pour vos applications DMG :
+
+1. Cliquez sur "Créer installateur DMG" ou utilisez `⌘ + ⇧ + N`
+2. Sélectionnez le fichier DMG source
+3. Les informations (nom du volume, chemin de l'application) sont automatiquement extraites
+4. Personnalisez le script selon vos besoins
+5. Le script généré utilise des logs colorés avec émojis pour suivre l'avancement
+6. Une fois créé, vous pouvez ajouter des tags au script dans la liste principale
 
 ### 📊 Gestion de l'historique
 
@@ -99,8 +122,10 @@ ScriptLauncher/
 - **MultiResultSection** - Affichage des résultats d'exécution
 - **FolderSelector** - Sélection du dossier cible des scripts
 - **ConfigManager** - Gestion de la configuration portable
+- **TagsViewModel** - Gestion des tags et de leurs couleurs
 - **MultiselectScriptsList/GridView** - Affichage des scripts avec sélection multiple
 - **RunningScriptsViewModel** - Gestion des scripts en cours avec timer
+- **DMGInstallerCreator** - Génération de scripts d'installation pour DMG
 
 ## 🛠️ Personnalisation
 
@@ -123,11 +148,22 @@ L'application est construite avec SwiftUI et suit une architecture MVVM :
 
 ### 🔮 Extensions possibles
 
-- 🏷️ Organisation par catégories
-- ⚙️ Paramètres personnalisables avancés
 - 📅 Planification des scripts
 - 🐚 Support des scripts Shell et Python
 - 📊 Statistiques d'exécution
+- 🌐 Support multilingue
+
+## 📋 Changelog
+
+### Version 1.1 (Mars 2025)
+- ✨ Nouveau créateur d'installateurs DMG avec extraction automatique d'informations
+- 🏷️ Amélioration du système de tags avec couleurs personnalisables
+- 📊 Nouveau mode d'affichage en grille avec visualisation des tags
+- 📄 Logs colorés avec émojis pour un meilleur suivi des scripts
+- 🐛 Corrections de bugs et améliorations de performance
+
+### Version 1.0 (Février 2025)
+- 🚀 Version initiale
 
 ## 👥 Contributeurs
 
