@@ -107,11 +107,25 @@ class TagsViewModel: ObservableObject {
     }
     
     func getTagsForScript(path: String) -> Set<String> {
-        return scriptTags[path] ?? []
+        // Vérifier le chemin absolu et le chemin relatif
+        if let tags = scriptTags[path] {
+            return tags
+        }
+        
+        // Vérifier si le chemin existe sous forme relative dans la configuration
+        let relativePath = configManager.convertToRelativePath(path) ?? path
+        if let tags = scriptTags[relativePath] {
+            return tags
+        }
+        
+        return []
     }
     
     func updateScriptTags(scriptPath: String, tags: Set<String>) {
-        scriptTags[scriptPath] = tags
+        // Convertir en chemin relatif pour le stockage si possible
+        let storagePath = configManager.convertToRelativePath(scriptPath) ?? scriptPath
+        
+        scriptTags[storagePath] = tags
         saveScriptTags()
     }
     

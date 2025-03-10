@@ -3,6 +3,7 @@
 //  ScriptLauncher
 //
 //  Created by MacBook-16/M1P-001 on 10/03/2025.
+//  Updated on 10/03/2025. - Added support for USB root relative paths
 //
 
 
@@ -66,7 +67,7 @@ class ContentViewModel: ObservableObject {
     
     // MARK: - Script Management
     func loadScripts() {
-        let folderPath = targetFolderPath
+        let folderPath = resolvePathIfNeeded(targetFolderPath)
         let fileManager = FileManager.default
         do {
             let files = try fileManager.contentsOfDirectory(atPath: folderPath)
@@ -102,6 +103,16 @@ class ContentViewModel: ObservableObject {
         // Charger les tags et favoris après avoir chargé les scripts
         loadFavorites()
         loadScriptTags()
+    }
+    
+    // Résoudre les chemins relatifs si nécessaire
+    private func resolvePathIfNeeded(_ path: String) -> String {
+        return ConfigManager.shared.resolveRelativePath(path)
+    }
+    
+    // Convertir en chemin relatif si possible
+    private func convertToRelativePathIfPossible(_ path: String) -> String {
+        return ConfigManager.shared.convertToRelativePath(path) ?? path
     }
     
     func selectAllScripts() {
@@ -143,8 +154,11 @@ class ContentViewModel: ObservableObject {
         if let index = scripts.firstIndex(where: { $0.id == updatedScript.id }) {
             scripts[index].tags = updatedScript.tags
             
+            // Convertir le chemin en relatif si possible avant de le stocker
+            let relativePath = convertToRelativePathIfPossible(updatedScript.path)
+            
             // Mettre à jour les tags dans le ViewModel
-            tagsViewModel.updateScriptTags(scriptPath: updatedScript.path, tags: updatedScript.tags)
+            tagsViewModel.updateScriptTags(scriptPath: relativePath, tags: updatedScript.tags)
             
             // Forcer le rafraîchissement des vues
             viewRefreshID = UUID()
@@ -155,7 +169,9 @@ class ContentViewModel: ObservableObject {
         // Mettre à jour chaque script avec ses tags
         for index in 0..<scripts.count {
             let scriptPath = scripts[index].path
-            let tags = tagsViewModel.getTagsForScript(path: scriptPath)
+            // Convertir le chemin en relatif pour la recherche dans la configuration
+            let relativePath = convertToRelativePathIfPossible(scriptPath)
+            let tags = tagsViewModel.getTagsForScript(path: relativePath)
             scripts[index].tags = tags
         }
     }
@@ -174,14 +190,24 @@ class ContentViewModel: ObservableObject {
     }
     
     func saveFavorites() {
-        let favoritePaths = Set(scripts.filter { $0.isFavorite }.map { $0.path })
-        ConfigManager.shared.favorites = favoritePaths
+        // Convertir les chemins en relatifs si possible avant de les stocker
+        var relativeFavoritePaths = Set<String>()
+        for path in scripts.filter({ $0.isFavorite }).map({ $0.path }) {
+            let relativePath = convertToRelativePathIfPossible(path)
+            relativeFavoritePaths.insert(relativePath)
+        }
+        ConfigManager.shared.favorites = relativeFavoritePaths
     }
     
     func loadFavorites() {
         let favoritesPaths = ConfigManager.shared.favorites
-        for (index, script) in scripts.enumerated() where favoritesPaths.contains(script.path) {
-            scripts[index].isFavorite = true
+        
+        for (index, script) in scripts.enumerated() {
+            // Vérifier à la fois le chemin absolu et le chemin relatif potentiel
+            let relativePath = convertToRelativePathIfPossible(script.path)
+            if favoritesPaths.contains(script.path) || favoritesPaths.contains(relativePath) {
+                scripts[index].isFavorite = true
+            }
         }
     }
     
@@ -232,8 +258,18 @@ class ContentViewModel: ObservableObject {
             self.scripts[index].lastExecuted = Date()
         }
         
+        // Résoudre le chemin absolu si c'est un chemin relatif
+            let resolvedScript = ScriptFile(
+            name: script.name,
+            path: resolvePathIfNeeded(script.path),
+            isFavorite: script.isFavorite,
+            lastExecuted: script.lastExecuted,
+            isSelected: script.isSelected,
+            tags: script.tags
+        )
+        
         // Exécuter le script et s'abonner aux mises à jour
-        let outputPublisher = scriptManager.executeScript(script: script)
+        let outputPublisher = scriptManager.executeScript(script: resolvedScript)
         
         outputPublisher
             .receive(on: DispatchQueue.main)
@@ -276,7 +312,8 @@ class ContentViewModel: ObservableObject {
     
     // MARK: - Special Scripts
     func launchConfiguratorScript() {
-        let configuratorPath = (targetFolderPath as NSString).appendingPathComponent("Configurator3000.scpt")
+        let folderPath = resolvePathIfNeeded(targetFolderPath)
+        let configuratorPath = (folderPath as NSString).appendingPathComponent("Configurator3000.scpt")
         
         if FileManager.default.fileExists(atPath: configuratorPath) {
             // Créer un ScriptFile factice pour le configurateur
@@ -404,6 +441,23 @@ class ContentViewModel: ObservableObject {
             self.viewRefreshID = UUID()
             
             print("ContentViewModel - Scripts et tags rechargés suite à notification RefreshScriptsList")
+        }
+        
+        // Nouvel observateur pour réparer les chemins
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("RepairPaths"),
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            guard let self = self else { return }
+            
+            // Forcer un rechargement de tout
+            self.initialize()
+            
+            // Forcer un rafraîchissement de la vue
+            self.viewRefreshID = UUID()
+            
+            print("ContentViewModel - Réparation des chemins effectuée")
         }
     }
 }

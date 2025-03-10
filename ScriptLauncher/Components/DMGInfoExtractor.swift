@@ -3,6 +3,7 @@
 //  ScriptLauncher
 //
 //  Created on 10/03/2025.
+//  Updated on 10/03/2025. - Added support for USB relative paths
 //
 
 import SwiftUI
@@ -416,14 +417,48 @@ struct DMGInstallerCreatorView: View {
         }
     }
     
-    // Fonction simplifiée pour créer le script d'installation DMG
+    // Fonction pour créer le script d'installation DMG
     private func createScript() {
         // Générer le contenu du script
         let scriptContent = createDMGInstallerContent()
         
         // Générer le nom de fichier avec extension .scpt
         let fileName = appName.replacingOccurrences(of: " ", with: "_") + "_Installer.scpt"
-        let filePath = (targetFolder as NSString).appendingPathComponent(fileName)
+        
+        // Résoudre le chemin cible pour la création du script
+        let resolvedTargetFolder = ConfigManager.shared.resolveRelativePath(targetFolder)
+        let filePath = (resolvedTargetFolder as NSString).appendingPathComponent(fileName)
+        
+        // Créer un dossier DMG pour stocker les images disques
+        let dmgFolderPath = (resolvedTargetFolder as NSString).appendingPathComponent("DMG")
+        if !FileManager.default.fileExists(atPath: dmgFolderPath) {
+            do {
+                try FileManager.default.createDirectory(at: URL(fileURLWithPath: dmgFolderPath),
+                                                       withIntermediateDirectories: true)
+            } catch {
+                print("Erreur lors de la création du dossier DMG: \(error)")
+            }
+        }
+        
+        // Copier le DMG dans le dossier DMG si nécessaire
+        let dmgFileName = URL(fileURLWithPath: sourcePath).lastPathComponent
+        let destDMGPath = (dmgFolderPath as NSString).appendingPathComponent(dmgFileName)
+        
+        if sourcePath != destDMGPath {
+            do {
+                try FileManager.default.copyItem(atPath: sourcePath, toPath: destDMGPath)
+            } catch {
+                print("Erreur lors de la copie du DMG: \(error)")
+                
+                // Afficher un avertissement mais continuer
+                let alert = NSAlert()
+                alert.messageText = "Avertissement"
+                alert.informativeText = "Le fichier DMG source n'a pas pu être copié dans le dossier de scripts. Le script créé utilisera le chemin original."
+                alert.alertStyle = .warning
+                alert.addButton(withTitle: "Continuer")
+                alert.runModal()
+            }
+        }
         
         // Vérifier si le fichier existe déjà
         if FileManager.default.fileExists(atPath: filePath) {
@@ -484,7 +519,7 @@ struct DMGInstallerCreatorView: View {
         }
     }
     
-    // Génère le contenu du script d'installation DMG
+    // Génère le contenu du script d'installation DMG avec des chemins relatifs
     private func createDMGInstallerContent() -> String {
         // Formatage de la date
         let dateFormatter = DateFormatter()
@@ -500,20 +535,69 @@ struct DMGInstallerCreatorView: View {
         -- Créé par \(author)
         -- Description: \(description)
 
-        -- Chemin vers le fichier DMG source
-        property sourcePath : "\(sourcePath)"
+        -- Variables pour les chemins
+        global dmgPath
+        global documentsPath
+        global appsPath
 
-        -- Nom attendu du volume monté
-        property mountedVolumeName : "\(volumeName)"
-
-        -- Chemin vers l'application dans le DMG
-        property applicationPath : "\(appPath)"
-
-        -- Chemin vers le dossier Documents
-        property documentsPath : ""
-
-        -- Chemin vers le dossier Applications
-        property appsPath : ""
+        -- Fonction pour initialiser les chemins relatifs
+        on initializePaths()
+            -- Obtenir le chemin du script en cours d'exécution
+            tell application "System Events"
+                set scriptPath to path of current application
+            end tell
+            
+            -- Extraire le dossier contenant le script
+            set scriptFolder to do shell script "dirname " & quoted form of POSIX path of scriptPath
+            
+            -- Définir le chemin du DMG source (relatif au script)
+            set dmgPath to scriptFolder & "/DMG/\(URL(fileURLWithPath: sourcePath).lastPathComponent)"
+            
+            -- Obtenir le chemin vers Documents
+            tell application "Finder"
+                set documentsPath to (path to documents folder as string)
+            end tell
+            
+            -- Obtenir le chemin vers Applications
+            tell application "Finder"
+                set appsPath to (path to applications folder as string)
+            end tell
+            
+            -- Vérifier si le DMG existe
+            set dmgExists to my fileExists(dmgPath)
+            if not dmgExists then
+                my logMessage("Le fichier DMG n'a pas été trouvé à: " & dmgPath, "error")
+                
+                -- Essayer de chercher dans les sous-dossiers
+                set alternativePath to scriptFolder & "/\(URL(fileURLWithPath: sourcePath).lastPathComponent)"
+                set dmgExists to my fileExists(alternativePath)
+                
+                if dmgExists then
+                    set dmgPath to alternativePath
+                    my logMessage("DMG trouvé à l'emplacement alternatif: " & dmgPath, "info")
+                else
+                    -- Dernier recours : demander à l'utilisateur
+                    set userPrompt to "Le fichier DMG n'a pas été trouvé automatiquement. Voulez-vous le sélectionner manuellement?"
+                    display dialog userPrompt buttons {"Annuler", "Sélectionner"} default button "Sélectionner"
+                    
+                    if button returned of result is "Sélectionner" then
+                        set dmgPath to choose file with prompt "Sélectionnez le fichier DMG à installer:" of type {"com.apple.disk-image"}
+                    else
+                        error "Installation annulée : DMG non trouvé."
+                    end if
+                end if
+            end if
+        end initializePaths
+        
+        -- Vérifie si un fichier existe
+        on fileExists(filePath)
+            try
+                do shell script "test -e " & quoted form of filePath
+                return true
+            on error
+                return false
+            end try
+        end fileExists
 
         -- Fonction pour afficher un log coloré
         on logMessage(message, logType)
@@ -539,15 +623,8 @@ struct DMGInstallerCreatorView: View {
         on run
             my logMessage("Démarrage de l'installation de " & "\(appName)" & "...", "start")
             
-            -- Obtenir le chemin vers Documents
-            tell application "Finder"
-                set documentsPath to (path to documents folder as string)
-            end tell
-            
-            -- Obtenir le chemin vers Applications
-            tell application "Finder"
-                set appsPath to (path to applications folder as string)
-            end tell
+            -- Initialiser les chemins relatifs
+            my initializePaths()
             
             -- Monter l'image disque
             my logMessage("Lancement du processus d'installation...", "info")
@@ -581,9 +658,9 @@ struct DMGInstallerCreatorView: View {
 
         -- Monter l'image disque
         on mountDiskImage()
-            my logMessage("Montage de l'image disque...", "process")
+            my logMessage("Montage de l'image disque: " & dmgPath, "process")
             
-            set mountCommand to "hdiutil attach '" & sourcePath & "'"
+            set mountCommand to "hdiutil attach " & quoted form of dmgPath
             if not runShellCommand(mountCommand) then
                 error "Impossible de monter l'image disque."
             end if
@@ -596,7 +673,7 @@ struct DMGInstallerCreatorView: View {
             my logMessage("Copie de l'application dans le dossier Applications...", "process")
             
             set sourceApp to "/Volumes/" & mountedVolumeName & applicationPath
-            set copyCommand to "cp -R '" & sourceApp & "' " & quoted form of (POSIX path of appsPath)
+            set copyCommand to "cp -R " & quoted form of sourceApp & " " & quoted form of (POSIX path of appsPath)
             
             if not runShellCommand(copyCommand) then
                 -- Tenter de démonter l'image avant de quitter
@@ -611,7 +688,7 @@ struct DMGInstallerCreatorView: View {
         on copyDMGToDocuments()
             my logMessage("Création d'une copie de sauvegarde du DMG dans Documents...", "process")
             
-            set copyCommand to "cp '" & sourcePath & "' " & quoted form of (POSIX path of documentsPath)
+            set copyCommand to "cp " & quoted form of dmgPath & " " & quoted form of (POSIX path of documentsPath)
             
             if not runShellCommand(copyCommand) then
                 my logMessage("Impossible de copier le fichier DMG dans Documents. L'installation continue.", "warning")
@@ -624,7 +701,7 @@ struct DMGInstallerCreatorView: View {
         on unmountDiskImage()
             my logMessage("Démontage de l'image disque...", "process")
             try
-                do shell script "hdiutil detach '/Volumes/" & mountedVolumeName & "'"
+                do shell script "hdiutil detach '/Volumes/" & mountedVolumeName & "' -force"
                 my logMessage("Image disque démontée avec succès", "success")
             on error
                 my logMessage("Impossible de démonter automatiquement l'image disque. Veuillez l'éjecter manuellement.", "warning")

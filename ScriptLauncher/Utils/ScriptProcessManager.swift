@@ -3,6 +3,7 @@
 //  ScriptLauncher
 //
 //  Updated for ScriptLauncher on 04/03/2025.
+//  Updated on 10/03/2025. - Added support for relative paths
 //
 
 import Foundation
@@ -15,6 +16,9 @@ class ScriptProcessManager: ObservableObject {
     func executeScript(script: ScriptFile) -> AnyPublisher<(UUID, String, ScriptStatus?, Date?), Never> {
         let id = script.id
         let outputSubject = PassthroughSubject<(UUID, String, ScriptStatus?, Date?), Never>()
+        
+        // Résoudre le chemin du script si c'est un chemin relatif
+        let scriptPath = ConfigManager.shared.resolveRelativePath(script.path)
         
         DispatchQueue.global(qos: .userInitiated).async {
             let task = Process()
@@ -43,7 +47,7 @@ class ScriptProcessManager: ObservableObject {
             task.standardOutput = pipe
             task.standardError = pipe
             task.launchPath = "/usr/bin/osascript"
-            task.arguments = [script.path]
+            task.arguments = [scriptPath]
             
             // Enregistrer le processus en cours d'exécution
             DispatchQueue.main.async {
