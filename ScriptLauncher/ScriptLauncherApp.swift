@@ -90,6 +90,17 @@ struct ScriptLauncherApp: App {
                 }
                 .keyboardShortcut("i", modifiers: .command)
             }
+            
+            // Nouveau menu DMG pour créer des installateurs
+            CommandMenu("DMG") {
+                Button("Créer un installateur DMG") {
+                    NotificationCenter.default.post(
+                        name: NSNotification.Name("CreateDMGInstaller"),
+                        object: nil
+                    )
+                }
+                .keyboardShortcut("n", modifiers: [.command, .shift])
+            }
         }
     }
     
