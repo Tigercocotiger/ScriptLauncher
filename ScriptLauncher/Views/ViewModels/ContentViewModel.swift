@@ -382,5 +382,28 @@ class ContentViewModel: ObservableObject {
         ) { [weak self] _ in
             self?.showDMGInstallerCreator = true
         }
+        
+        // Nouvel observateur pour rafraîchir complètement la liste des scripts
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("RefreshScriptsList"),
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            guard let self = self else { return }
+            
+            // Recharger les scripts
+            self.loadScripts()
+            
+            // Recharger les tags
+            self.loadScriptTags()
+            
+            // Mettre à jour les favoris
+            self.loadFavorites()
+            
+            // Forcer un rafraîchissement de la vue
+            self.viewRefreshID = UUID()
+            
+            print("ContentViewModel - Scripts et tags rechargés suite à notification RefreshScriptsList")
+        }
     }
 }
