@@ -80,20 +80,26 @@ struct MultiselectScriptGridView: View {
                 .background(isDarkMode ? Color.black.opacity(0.2) : Color.gray.opacity(0.05))
             }
             
-            ScrollView {
-                if filteredScripts.isEmpty {
-                    VStack(spacing: DesignSystem.spacing) {
-                        Image(systemName: "doc.text.magnifyingglass")
-                            .font(.system(size: 40))
-                            .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
-                        
-                        Text(showFavoritesOnly
-                             ? "Aucun script favori"
-                             : (searchText.isEmpty ? "Aucun script trouvé" : "Aucun résultat pour '\(searchText)'"))
-                            .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
+            if filteredScripts.isEmpty {
+                // Affichage centré lorsqu'aucun script n'est trouvé
+                VStack(spacing: DesignSystem.spacing) {
+                    Spacer()
+                    
+                    Image(systemName: "doc.text.magnifyingglass")
+                        .font(.system(size: 40))
+                        .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
+                    
+                    Text(showFavoritesOnly
+                         ? "Aucun script favori"
+                         : (searchText.isEmpty ? "Aucun script trouvé" : "Aucun résultat pour '\(searchText)'"))
+                        .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
+                        .multilineTextAlignment(.center)
+                    
+                    Spacer()
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ScrollView {
                     LazyVGrid(columns: columns, spacing: 16) {
                         ForEach(filteredScripts) { script in
                             MultiselectScriptGridItemView(
@@ -250,7 +256,7 @@ struct MultiselectScriptGridItemView: View {
                         tagsViewModel: tagsViewModel,
                         script: script,
                         isPresented: $showTagsEditor,
-                        isDarkMode: isDarkMode, // Ajout du paramètre isDarkMode
+                        isDarkMode: isDarkMode,
                         onSave: onUpdateTags
                     )
                 }

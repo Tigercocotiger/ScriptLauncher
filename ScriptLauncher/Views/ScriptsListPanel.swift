@@ -63,23 +63,14 @@ struct ScriptsListPanel: View {
                 )
             }
             
-            // Boutons d'action
-            VStack(spacing: DesignSystem.smallSpacing) {
                 // Bouton pour exécuter tous les scripts sélectionnés
                 ExecuteSelectedScriptsButton(
                     selectedScriptsCount: viewModel.selectedScriptsCount,
                     isAnyScriptRunning: false,
                     isDarkMode: viewModel.isDarkMode,
                     onExecute: viewModel.executeSelectedScripts
-                )
+                ).padding(.top,DesignSystem.spacing)
                 
-                // Bouton pour créer un installateur DMG
-                CreateDMGInstallerButton(
-                    isDarkMode: viewModel.isDarkMode,
-                    targetFolder: viewModel.targetFolderPath,
-                    onScriptCreated: viewModel.loadScripts
-                )
-            }
         }
         .background(DesignSystem.cardBackground(for: viewModel.isDarkMode))
         .clipShape(RoundedRectangle(cornerRadius: DesignSystem.cornerRadius))

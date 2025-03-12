@@ -356,26 +356,54 @@ struct DMGInstallerCreatorView: View {
         }
     }
     
-    // Composant pour un champ de paramètre avec label
-    struct ParameterTextField: View {
-        let label: String
-        let placeholder: String
-        var value: Binding<String>
-        let isDarkMode: Bool
-        
-        var body: some View {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(label)
-                    .font(.caption)
-                    .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
-                
-                TextField(placeholder, text: value)
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                    .frame(maxWidth: .infinity)
+    // Composant TextField personnalisé avec placeholder visible en mode sombre
+        struct CustomTextField: View {
+            var placeholder: String
+            @Binding var text: String
+            var isDarkMode: Bool
+            
+            var body: some View {
+                ZStack(alignment: .leading) {
+                    if text.isEmpty {
+                        Text(placeholder)
+                            .foregroundColor(isDarkMode ? Color.white.opacity(0.5) : Color.gray)
+                            .padding(.leading, 6)
+                    }
+                    
+                    TextField("", text: $text)
+                        .foregroundColor(DesignSystem.textPrimary(for: isDarkMode))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 4)
+                        .textFieldStyle(PlainTextFieldStyle())
+                }
+                .background(isDarkMode ? Color(red: 0.3, green: 0.3, blue: 0.32) : Color.white)
+                .cornerRadius(6)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(isDarkMode ? Color(red: 0.4, green: 0.4, blue: 0.42) : Color.gray.opacity(0.3), lineWidth: 1)
+                )
             }
         }
-    }
-    
+        
+        struct ParameterTextField: View {
+            let label: String
+            let placeholder: String
+            var value: Binding<String>
+            let isDarkMode: Bool
+            
+            var body: some View {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(label)
+                        .font(.caption)
+                        .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
+                    
+                    CustomTextField(placeholder: placeholder, text: value, isDarkMode: isDarkMode)
+                        .frame(height: 30)
+                        .frame(maxWidth: .infinity)
+                }
+            }
+        }
+        
     // Fonction pour vérifier si le formulaire est valide
     private func isFormValid() -> Bool {
         return !appName.isEmpty &&
