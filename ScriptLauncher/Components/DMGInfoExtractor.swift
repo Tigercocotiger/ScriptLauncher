@@ -755,6 +755,8 @@ struct DMGInstallerCreatorView: View {
             end if
             
             log prefix & message
+            -- Ajouter cette ligne pour imprimer également à stdout
+            do shell script "echo " & quoted form of (prefix & message)
         end logMessage
         """
     }
