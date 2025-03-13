@@ -13,6 +13,10 @@ struct ScriptLauncherApp: App {
                     setupAppAppearance()
                     centerWindow()
                     
+                    // Initialiser le dossier Scripts dans Resources
+                    ConfigManager.shared.initializeScriptsFolder()
+                    NotificationCenter.default.post(name: NSNotification.Name("RefreshScriptsList"), object: nil)
+                    
                     // Exécuter l'adaptation aux chemins de la clé USB actuelle
                     if !hasRunOnThisDevice {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {

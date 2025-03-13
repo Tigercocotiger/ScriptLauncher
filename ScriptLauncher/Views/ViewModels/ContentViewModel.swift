@@ -52,18 +52,21 @@ class ContentViewModel: ObservableObject {
     }
     
     // MARK: - Initialization
-    func initialize() {
-        loadScripts()
-        loadFavorites()
-        loadScriptTags()
-        
-        // Chargement des préférences
-        isDarkMode = ConfigManager.shared.isDarkMode
-        isGridView = ConfigManager.shared.isGridView
-        targetFolderPath = ConfigManager.shared.folderPath
-        
-        setupNotificationObservers()
-    }
+        func initialize() {
+            // Utiliser le dossier Scripts dans Resources comme chemin par défaut
+            targetFolderPath = ConfigManager.shared.getScriptsFolderPath()
+            ConfigManager.shared.folderPath = targetFolderPath
+            
+            loadScripts()
+            loadFavorites()
+            loadScriptTags()
+            
+            // Chargement des préférences
+            isDarkMode = ConfigManager.shared.isDarkMode
+            isGridView = ConfigManager.shared.isGridView
+            
+            setupNotificationObservers()
+        }
     
     // MARK: - Script Management
     func loadScripts() {

@@ -357,59 +357,59 @@ struct DMGInstallerCreatorView: View {
     }
     
     // Composant TextField personnalisé avec placeholder visible en mode sombre
-        struct CustomTextField: View {
-            var placeholder: String
-            @Binding var text: String
-            var isDarkMode: Bool
-            
-            var body: some View {
-                ZStack(alignment: .leading) {
-                    if text.isEmpty {
-                        Text(placeholder)
-                            .foregroundColor(isDarkMode ? Color.white.opacity(0.5) : Color.gray)
-                            .padding(.leading, 6)
-                    }
-                    
-                    TextField("", text: $text)
-                        .foregroundColor(DesignSystem.textPrimary(for: isDarkMode))
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 4)
-                        .textFieldStyle(PlainTextFieldStyle())
+    struct CustomTextField: View {
+        var placeholder: String
+        @Binding var text: String
+        var isDarkMode: Bool
+        
+        var body: some View {
+            ZStack(alignment: .leading) {
+                if text.isEmpty {
+                    Text(placeholder)
+                        .foregroundColor(isDarkMode ? Color.white.opacity(0.5) : Color.gray)
+                        .padding(.leading, 6)
                 }
-                .background(isDarkMode ? Color(red: 0.3, green: 0.3, blue: 0.32) : Color.white)
-                .cornerRadius(6)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 6)
-                        .stroke(isDarkMode ? Color(red: 0.4, green: 0.4, blue: 0.42) : Color.gray.opacity(0.3), lineWidth: 1)
-                )
+                
+                TextField("", text: $text)
+                    .foregroundColor(DesignSystem.textPrimary(for: isDarkMode))
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 4)
+                    .textFieldStyle(PlainTextFieldStyle())
+            }
+            .background(isDarkMode ? Color(red: 0.3, green: 0.3, blue: 0.32) : Color.white)
+            .cornerRadius(6)
+            .overlay(
+                RoundedRectangle(cornerRadius: 6)
+                    .stroke(isDarkMode ? Color(red: 0.4, green: 0.4, blue: 0.42) : Color.gray.opacity(0.3), lineWidth: 1)
+            )
+        }
+    }
+    
+    struct ParameterTextField: View {
+        let label: String
+        let placeholder: String
+        var value: Binding<String>
+        let isDarkMode: Bool
+        
+        var body: some View {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(label)
+                    .font(.caption)
+                    .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
+                
+                CustomTextField(placeholder: placeholder, text: value, isDarkMode: isDarkMode)
+                    .frame(height: 30)
+                    .frame(maxWidth: .infinity)
             }
         }
-        
-        struct ParameterTextField: View {
-            let label: String
-            let placeholder: String
-            var value: Binding<String>
-            let isDarkMode: Bool
-            
-            var body: some View {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(label)
-                        .font(.caption)
-                        .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
-                    
-                    CustomTextField(placeholder: placeholder, text: value, isDarkMode: isDarkMode)
-                        .frame(height: 30)
-                        .frame(maxWidth: .infinity)
-                }
-            }
-        }
-        
+    }
+    
     // Fonction pour vérifier si le formulaire est valide
     private func isFormValid() -> Bool {
         return !appName.isEmpty &&
-               !sourcePath.isEmpty &&
-               !volumeName.isEmpty &&
-               !appPath.isEmpty
+        !sourcePath.isEmpty &&
+        !volumeName.isEmpty &&
+        !appPath.isEmpty
     }
     
     // Fonction pour sélectionner un fichier DMG et extraire ses informations
@@ -453,16 +453,16 @@ struct DMGInstallerCreatorView: View {
         // Générer le nom de fichier avec extension .scpt
         let fileName = appName.replacingOccurrences(of: " ", with: "_") + "_Installer.scpt"
         
-        // Résoudre le chemin cible pour la création du script
-        let resolvedTargetFolder = ConfigManager.shared.resolveRelativePath(targetFolder)
-        let filePath = (resolvedTargetFolder as NSString).appendingPathComponent(fileName)
+        // Utiliser le dossier de scripts dans Resources
+        let scriptsFolderPath = ConfigManager.shared.getScriptsFolderPath()
+        let filePath = (scriptsFolderPath as NSString).appendingPathComponent(fileName)
         
         // Créer un dossier DMG pour stocker les images disques
-        let dmgFolderPath = (resolvedTargetFolder as NSString).appendingPathComponent("DMG")
+        let dmgFolderPath = (scriptsFolderPath as NSString).appendingPathComponent("DMG")
         if !FileManager.default.fileExists(atPath: dmgFolderPath) {
             do {
                 try FileManager.default.createDirectory(at: URL(fileURLWithPath: dmgFolderPath),
-                                                       withIntermediateDirectories: true)
+                                                        withIntermediateDirectories: true)
             } catch {
                 print("Erreur lors de la création du dossier DMG: \(error)")
             }
@@ -474,6 +474,12 @@ struct DMGInstallerCreatorView: View {
         
         if sourcePath != destDMGPath {
             do {
+                // Si le fichier existe déjà, le supprimer d'abord
+                if FileManager.default.fileExists(atPath: destDMGPath) {
+                    try FileManager.default.removeItem(atPath: destDMGPath)
+                }
+                
+                // Copier le fichier
                 try FileManager.default.copyItem(atPath: sourcePath, toPath: destDMGPath)
             } catch {
                 print("Erreur lors de la copie du DMG: \(error)")
@@ -554,8 +560,8 @@ struct DMGInstallerCreatorView: View {
         dateFormatter.dateStyle = .medium
         let currentDate = dateFormatter.string(from: Date())
         
-        // Code de sauvegarde en fonction de l'option choisie
-        let backupCode = createBackup ? "my copyDMGToDocuments()" : "-- Sauvegarde désactivée"
+        // Nom du fichier DMG sans le chemin complet
+        let dmgFileName = URL(fileURLWithPath: sourcePath).lastPathComponent
         
         return """
         -- Script d'installation \(appName)
@@ -563,59 +569,163 @@ struct DMGInstallerCreatorView: View {
         -- Créé par \(author)
         -- Description: \(description)
 
-        -- Variables pour les chemins
-        global dmgPath
-        global documentsPath
-        global appsPath
+        -- Variables et fonctions définies pour ce script
+        property mountedVolumeName : "\(volumeName)"
+        property applicationPath : "\(appPath)"
+        property dmgFileName : "\(dmgFileName)"
 
-        -- Fonction pour initialiser les chemins relatifs
-        on initializePaths()
-            -- Obtenir le chemin du script en cours d'exécution
-            tell application "System Events"
-                set scriptPath to path of current application
-            end tell
+        -- Exécution principale du script
+        on run
+            -- Variables locales à l'exécution
+            set dmgPath to ""
+            set documentsPath to ""
+            set appsPath to ""
             
-            -- Extraire le dossier contenant le script
-            set scriptFolder to do shell script "dirname " & quoted form of POSIX path of scriptPath
-            
-            -- Définir le chemin du DMG source (relatif au script)
-            set dmgPath to scriptFolder & "/DMG/\(URL(fileURLWithPath: sourcePath).lastPathComponent)"
-            
-            -- Obtenir le chemin vers Documents
-            tell application "Finder"
-                set documentsPath to (path to documents folder as string)
-            end tell
-            
-            -- Obtenir le chemin vers Applications
-            tell application "Finder"
-                set appsPath to (path to applications folder as string)
-            end tell
-            
-            -- Vérifier si le DMG existe
-            set dmgExists to my fileExists(dmgPath)
-            if not dmgExists then
-                my logMessage("Le fichier DMG n'a pas été trouvé à: " & dmgPath, "error")
+            try
+                my logMessage("Démarrage de l'installation de " & "\(appName)" & "...", "start")
                 
-                -- Essayer de chercher dans les sous-dossiers
-                set alternativePath to scriptFolder & "/\(URL(fileURLWithPath: sourcePath).lastPathComponent)"
-                set dmgExists to my fileExists(alternativePath)
+                -- Trouver le fichier DMG
+                set dmgPath to my findDMGFile()
+                if dmgPath is false or dmgPath is "" then
+                    error "Installation annulée: Impossible de trouver le fichier DMG."
+                end if
                 
-                if dmgExists then
-                    set dmgPath to alternativePath
-                    my logMessage("DMG trouvé à l'emplacement alternatif: " & dmgPath, "info")
-                else
-                    -- Dernier recours : demander à l'utilisateur
-                    set userPrompt to "Le fichier DMG n'a pas été trouvé automatiquement. Voulez-vous le sélectionner manuellement?"
-                    display dialog userPrompt buttons {"Annuler", "Sélectionner"} default button "Sélectionner"
-                    
-                    if button returned of result is "Sélectionner" then
-                        set dmgPath to choose file with prompt "Sélectionnez le fichier DMG à installer:" of type {"com.apple.disk-image"}
-                    else
-                        error "Installation annulée : DMG non trouvé."
-                    end if
+                -- Chemins standards
+                set documentsPath to POSIX path of (path to documents folder)
+                set appsPath to POSIX path of (path to applications folder)
+                
+                -- Monter l'image disque
+                my logMessage("Montage de l'image disque: " & dmgPath, "process")
+                set mountResult to my mountDMG(dmgPath)
+                if mountResult is false then
+                    error "Impossible de monter l'image disque."
+                end if
+                
+                -- Copier l'application
+                my logMessage("Copie de l'application dans Applications...", "process")
+                set sourceApp to "/Volumes/" & mountedVolumeName & applicationPath
+                set copyResult to my copyApp(sourceApp, appsPath)
+                if copyResult is false then
+                    my unmountDMG(mountedVolumeName)
+                    error "Impossible de copier l'application dans le dossier Applications."
+                end if
+                
+                -- Sauvegarde optionnelle
+                if "\(createBackup)" is "true" then
+                    my logMessage("Sauvegarde du DMG dans Documents...", "process")
+                    my copyDMGToDocuments(dmgPath, documentsPath)
+                end if
+                
+                -- Démonter l'image
+                my unmountDMG(mountedVolumeName)
+                
+                -- Succès !
+                my logMessage("Installation terminée avec succès!", "success")
+                return "Installation terminée."
+            on error errMsg
+                my logMessage("Erreur: " & errMsg, "error")
+                display dialog "L'installation a échoué: " & errMsg buttons {"OK"} default button "OK" with icon stop
+                return "Installation échouée."
+            end try
+        end run
+
+        -- Fonction pour trouver le fichier DMG
+        on findDMGFile()
+            -- Obtenir le dossier du script
+            set myPath to POSIX path of (path to me)
+            set lastSlash to my lastIndexOf(myPath, "/")
+            if lastSlash is not false then
+                set scriptFolder to text 1 thru lastSlash of myPath
+                
+                -- Essayer dans le sous-dossier DMG
+                set dmgInSubfolder to scriptFolder & "DMG/" & dmgFileName
+                if my fileExists(dmgInSubfolder) then
+                    return dmgInSubfolder
+                end if
+                
+                -- Essayer dans le même dossier que le script
+                set dmgInSameFolder to scriptFolder & dmgFileName
+                if my fileExists(dmgInSameFolder) then
+                    return dmgInSameFolder
                 end if
             end if
-        end initializePaths
+            
+            -- Demander à l'utilisateur
+            my logMessage("DMG non trouvé automatiquement. Sélection manuelle requise.", "warning")
+            
+            set userPrompt to "Le fichier DMG n'a pas été trouvé automatiquement. Voulez-vous le sélectionner manuellement?"
+            set userChoice to button returned of (display dialog userPrompt buttons {"Annuler", "Sélectionner"} default button "Sélectionner")
+            
+            if userChoice is "Sélectionner" then
+                try
+                    set selectedFile to POSIX path of (choose file with prompt "Sélectionnez le fichier DMG à installer:" of type {"com.apple.disk-image"})
+                    return selectedFile
+                on error
+                    return false
+                end try
+            else
+                return false
+            end if
+        end findDMGFile
+        
+        -- Fonction pour monter le DMG
+        on mountDMG(dmgPath)
+            try
+                do shell script "hdiutil attach " & quoted form of dmgPath
+                return true
+            on error errMsg
+                my logMessage("Erreur de montage: " & errMsg, "error")
+                return false
+            end try
+        end mountDMG
+        
+        -- Fonction pour copier l'application
+        on copyApp(sourceApp, appsPath)
+            try
+                do shell script "cp -R " & quoted form of sourceApp & " " & quoted form of appsPath
+                return true
+            on error errMsg
+                my logMessage("Erreur de copie: " & errMsg, "error")
+                return false
+            end try
+        end copyApp
+        
+        -- Fonction pour créer une copie de sauvegarde du DMG
+        on copyDMGToDocuments(dmgPath, documentsPath)
+            try
+                do shell script "cp " & quoted form of dmgPath & " " & quoted form of documentsPath
+                my logMessage("Copie de sauvegarde créée avec succès dans Documents", "success")
+                return true
+            on error errMsg
+                my logMessage("Erreur de sauvegarde: " & errMsg, "warning")
+                return false
+            end try
+        end copyDMGToDocuments
+        
+        -- Fonction pour démonter le volume
+        on unmountDMG(volumeName)
+            try
+                do shell script "hdiutil detach '/Volumes/" & volumeName & "' -force"
+                my logMessage("Image disque démontée avec succès", "success")
+                return true
+            on error
+                my logMessage("Impossible de démonter automatiquement l'image disque. Veuillez l'éjecter manuellement.", "warning")
+                return false
+            end try
+        end unmountDMG
+        
+        -- Utilitaire pour trouver la dernière occurrence d'un caractère dans une chaîne
+        on lastIndexOf(inputString, searchChar)
+            set AppleScript's text item delimiters to searchChar
+            set itemList to text items of inputString
+            if (count of itemList) is 1 then
+                return false -- Le caractère n'existe pas dans la chaîne
+            else
+                set textLength to length of inputString
+                set lastItem to last item of itemList
+                return textLength - (length of lastItem) - (length of searchChar) + 1
+            end if
+        end lastIndexOf
         
         -- Vérifie si un fichier existe
         on fileExists(filePath)
@@ -646,99 +756,9 @@ struct DMGInstallerCreatorView: View {
             
             log prefix & message
         end logMessage
-
-        -- Initialiser les chemins
-        on run
-            my logMessage("Démarrage de l'installation de " & "\(appName)" & "...", "start")
-            
-            -- Initialiser les chemins relatifs
-            my initializePaths()
-            
-            -- Monter l'image disque
-            my logMessage("Lancement du processus d'installation...", "info")
-            
-            -- Monter l'image disque
-            my mountDiskImage()
-            
-            -- Copier l'application dans le dossier Applications
-            my copyApplicationToApplications()
-            
-            -- Créer une copie de sauvegarde dans Documents (optionnel)
-            \(backupCode)
-            
-            -- Démonter l'image disque
-            my unmountDiskImage()
-            
-            -- Message de confirmation
-            my logMessage("Installation terminée avec succès!", "success")
-        end run
-
-        -- Fonction pour exécuter des commandes shell avec gestion d'erreur
-        on runShellCommand(theCommand)
-            try
-                do shell script theCommand
-                return true
-            on error errMsg number errNum
-                my logMessage("Erreur " & errNum & " : " & errMsg, "error")
-                return false
-            end try
-        end runShellCommand
-
-        -- Monter l'image disque
-        on mountDiskImage()
-            my logMessage("Montage de l'image disque: " & dmgPath, "process")
-            
-            set mountCommand to "hdiutil attach " & quoted form of dmgPath
-            if not runShellCommand(mountCommand) then
-                error "Impossible de monter l'image disque."
-            end if
-            
-            my logMessage("Image disque montée avec succès", "success")
-        end mountDiskImage
-
-        -- Copier l'application dans le dossier Applications
-        on copyApplicationToApplications()
-            my logMessage("Copie de l'application dans le dossier Applications...", "process")
-            
-            set sourceApp to "/Volumes/" & mountedVolumeName & applicationPath
-            set copyCommand to "cp -R " & quoted form of sourceApp & " " & quoted form of (POSIX path of appsPath)
-            
-            if not runShellCommand(copyCommand) then
-                -- Tenter de démonter l'image avant de quitter
-                my unmountDiskImage()
-                error "Impossible de copier l'application dans le dossier Applications."
-            end if
-            
-            my logMessage("Application copiée avec succès dans " & POSIX path of appsPath, "success")
-        end copyApplicationToApplications
-
-        -- Copier le DMG dans Documents pour sauvegarde
-        on copyDMGToDocuments()
-            my logMessage("Création d'une copie de sauvegarde du DMG dans Documents...", "process")
-            
-            set copyCommand to "cp " & quoted form of dmgPath & " " & quoted form of (POSIX path of documentsPath)
-            
-            if not runShellCommand(copyCommand) then
-                my logMessage("Impossible de copier le fichier DMG dans Documents. L'installation continue.", "warning")
-            else
-                my logMessage("Copie de sauvegarde créée avec succès dans " & POSIX path of documentsPath, "success")
-            end if
-        end copyDMGToDocuments
-
-        -- Démonter l'image disque
-        on unmountDiskImage()
-            my logMessage("Démontage de l'image disque...", "process")
-            try
-                do shell script "hdiutil detach '/Volumes/" & mountedVolumeName & "' -force"
-                my logMessage("Image disque démontée avec succès", "success")
-            on error
-                my logMessage("Impossible de démonter automatiquement l'image disque. Veuillez l'éjecter manuellement.", "warning")
-            end try
-        end unmountDiskImage
         """
     }
 }
-
 // Bouton pour créer un installateur DMG
 struct CreateDMGInstallerButton: View {
     @State private var showCreator = false

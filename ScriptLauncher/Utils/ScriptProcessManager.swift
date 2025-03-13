@@ -4,6 +4,7 @@
 //
 //  Updated for ScriptLauncher on 04/03/2025.
 //  Updated on 10/03/2025. - Added support for relative paths
+//  Updated on 13/03/2025. - Added support for capturing AppleScript logs
 //
 
 import Foundation
@@ -16,9 +17,6 @@ class ScriptProcessManager: ObservableObject {
     func executeScript(script: ScriptFile) -> AnyPublisher<(UUID, String, ScriptStatus?, Date?), Never> {
         let id = script.id
         let outputSubject = PassthroughSubject<(UUID, String, ScriptStatus?, Date?), Never>()
-        
-        // Résoudre le chemin du script si c'est un chemin relatif
-        let scriptPath = ConfigManager.shared.resolveRelativePath(script.path)
         
         DispatchQueue.global(qos: .userInitiated).async {
             let task = Process()
@@ -46,8 +44,13 @@ class ScriptProcessManager: ObservableObject {
             
             task.standardOutput = pipe
             task.standardError = pipe
+            
+            // Résoudre le chemin du script si c'est un chemin relatif
+            let scriptPath = ConfigManager.shared.resolveRelativePath(script.path)
+            
+            // Utiliser osascript avec l'option -s o pour afficher les logs
             task.launchPath = "/usr/bin/osascript"
-            task.arguments = [scriptPath]
+            task.arguments = ["-s", "o", scriptPath] // "o" pour output les logs à stdout
             
             // Enregistrer le processus en cours d'exécution
             DispatchQueue.main.async {

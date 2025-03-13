@@ -5,9 +5,11 @@
 //  Created on 05/03/2025.
 //  Updated on 06/03/2025. - Added tags support
 //  Updated on 10/03/2025. - Added root USB drive resources lookup
+//  Updated on 13/03/2025. - Added support for scripts in Resources folder
 //
 
 import Foundation
+import AppKit
 
 struct AppConfig: Codable {
     var favorites: Set<String> = []
@@ -224,5 +226,148 @@ class ConfigManager {
         }
         
         return path
+    }
+    
+    // Retourne le chemin vers le dossier des scripts dans Resources
+    func getScriptsFolderPath() -> String {
+        // Calculer le chemin de base vers le dossier Resources/ScriptLauncher
+        let baseURL = configFilePath.deletingLastPathComponent()
+        
+        // Définir le chemin du dossier des scripts
+        let scriptsFolderURL = baseURL.appendingPathComponent("Scripts", isDirectory: true)
+        
+        // Créer le dossier s'il n'existe pas
+        if !FileManager.default.fileExists(atPath: scriptsFolderURL.path) {
+            do {
+                try FileManager.default.createDirectory(at: scriptsFolderURL, withIntermediateDirectories: true)
+            } catch {
+                print("Erreur lors de la création du dossier Scripts: \(error)")
+            }
+        }
+        
+        return scriptsFolderURL.path
+    }
+    
+    // Initialise le dossier de scripts avec les valeurs par défaut si nécessaire
+    func initializeScriptsFolder() {
+        let scriptsPath = getScriptsFolderPath()
+        
+        // Si le dossier de scripts est vide, proposer de copier des scripts depuis le dossier par défaut
+        let fileManager = FileManager.default
+        do {
+            let files = try fileManager.contentsOfDirectory(atPath: scriptsPath)
+            let scriptFiles = files.filter { $0.hasSuffix(".scpt") || $0.hasSuffix(".applescript") }
+            
+            if scriptFiles.isEmpty {
+                // Le dossier est vide, utiliser le dossier par défaut
+                if config.lastOpenedFolderPath != scriptsPath && isValidScriptFolder(config.lastOpenedFolderPath) {
+                    // Demander à l'utilisateur s'il souhaite copier les scripts existants
+                    let alert = NSAlert()
+                    alert.messageText = "Configuration des scripts"
+                    alert.informativeText = "Le dossier de scripts dans Resources est vide. Souhaitez-vous y copier les scripts depuis \(config.lastOpenedFolderPath)?"
+                    alert.alertStyle = .informational
+                    alert.addButton(withTitle: "Oui")
+                    alert.addButton(withTitle: "Non")
+                    
+                    let response = alert.runModal()
+                    if response == .alertFirstButtonReturn {
+                        // Copier les scripts existants
+                        copyScriptsToResourcesFolder(from: config.lastOpenedFolderPath)
+                    }
+                }
+            }
+        } catch {
+            print("Erreur lors de la vérification du dossier de scripts: \(error)")
+        }
+        
+        // Mettre à jour le chemin de dossier par défaut
+        config.lastOpenedFolderPath = scriptsPath
+        saveConfig()
+    }
+    
+    // Copie les scripts existants vers le dossier Resources/ScriptLauncher/Scripts
+    private func copyScriptsToResourcesFolder(from sourcePath: String) {
+        let destinationPath = getScriptsFolderPath()
+        let fileManager = FileManager.default
+        
+        do {
+            // Résoudre le chemin source si c'est un chemin relatif
+            let resolvedSourcePath = resolveRelativePath(sourcePath)
+            
+            // Obtenir tous les fichiers scripts du dossier source
+            let files = try fileManager.contentsOfDirectory(atPath: resolvedSourcePath)
+            let scriptFiles = files.filter { $0.hasSuffix(".scpt") || $0.hasSuffix(".applescript") }
+            
+            // Copier chaque script
+            for file in scriptFiles {
+                let sourceFile = (resolvedSourcePath as NSString).appendingPathComponent(file)
+                let destinationFile = (destinationPath as NSString).appendingPathComponent(file)
+                
+                // Vérifier si la destination existe déjà
+                if fileManager.fileExists(atPath: destinationFile) {
+                    try fileManager.removeItem(atPath: destinationFile)
+                }
+                
+                // Copier le fichier
+                try fileManager.copyItem(atPath: sourceFile, toPath: destinationFile)
+            }
+            
+            // Vérifier si le dossier DMG existe et le copier également
+            let sourceDMGFolder = (resolvedSourcePath as NSString).appendingPathComponent("DMG")
+            let destinationDMGFolder = (destinationPath as NSString).appendingPathComponent("DMG")
+            
+            if fileManager.fileExists(atPath: sourceDMGFolder) {
+                // Créer le dossier DMG dans la destination s'il n'existe pas
+                if !fileManager.fileExists(atPath: destinationDMGFolder) {
+                    try fileManager.createDirectory(at: URL(fileURLWithPath: destinationDMGFolder),
+                                                   withIntermediateDirectories: true)
+                }
+                
+                // Copier tous les fichiers DMG
+                let dmgFiles = try fileManager.contentsOfDirectory(atPath: sourceDMGFolder)
+                for file in dmgFiles {
+                    let sourceDMGFile = (sourceDMGFolder as NSString).appendingPathComponent(file)
+                    let destinationDMGFile = (destinationDMGFolder as NSString).appendingPathComponent(file)
+                    
+                    // Vérifier si la destination existe déjà
+                    if fileManager.fileExists(atPath: destinationDMGFile) {
+                        try fileManager.removeItem(atPath: destinationDMGFile)
+                    }
+                    
+                    // Copier le fichier DMG
+                    try fileManager.copyItem(atPath: sourceDMGFile, toPath: destinationDMGFile)
+                }
+            }
+            
+            print("Scripts copiés avec succès vers \(destinationPath)")
+        } catch {
+            print("Erreur lors de la copie des scripts: \(error)")
+        }
+    }
+    
+    // Ajoute un script au dossier Resources/ScriptLauncher/Scripts
+    func addScriptToResourcesFolder(scriptPath: String, scriptName: String? = nil) -> Bool {
+        let destinationPath = getScriptsFolderPath()
+        let fileManager = FileManager.default
+        
+        // Utiliser le nom fourni ou extraire le nom du fichier
+        let fileName = scriptName ?? URL(fileURLWithPath: scriptPath).lastPathComponent
+        
+        // Construire le chemin de destination
+        let destinationFile = (destinationPath as NSString).appendingPathComponent(fileName)
+        
+        do {
+            // Vérifier si la destination existe déjà
+            if fileManager.fileExists(atPath: destinationFile) {
+                try fileManager.removeItem(atPath: destinationFile)
+            }
+            
+            // Copier le fichier
+            try fileManager.copyItem(atPath: scriptPath, toPath: destinationFile)
+            return true
+        } catch {
+            print("Erreur lors de l'ajout du script: \(error)")
+            return false
+        }
     }
 }
