@@ -4,8 +4,8 @@
 //
 //  Created by MacBook-16/M1P-001 on 10/03/2025.
 //  Updated on 10/03/2025. - Added support for USB root relative paths
+//  Updated on 14/03/2025. - Fixed log display issues and method organization
 //
-
 
 import SwiftUI
 import Combine
@@ -52,21 +52,21 @@ class ContentViewModel: ObservableObject {
     }
     
     // MARK: - Initialization
-        func initialize() {
-            // Utiliser le dossier Scripts dans Resources comme chemin par défaut
-            targetFolderPath = ConfigManager.shared.getScriptsFolderPath()
-            ConfigManager.shared.folderPath = targetFolderPath
-            
-            loadScripts()
-            loadFavorites()
-            loadScriptTags()
-            
-            // Chargement des préférences
-            isDarkMode = ConfigManager.shared.isDarkMode
-            isGridView = ConfigManager.shared.isGridView
-            
-            setupNotificationObservers()
-        }
+    func initialize() {
+        // Utiliser le dossier Scripts dans Resources comme chemin par défaut
+        targetFolderPath = ConfigManager.shared.getScriptsFolderPath()
+        ConfigManager.shared.folderPath = targetFolderPath
+        
+        loadScripts()
+        loadFavorites()
+        loadScriptTags()
+        
+        // Chargement des préférences
+        isDarkMode = ConfigManager.shared.isDarkMode
+        isGridView = ConfigManager.shared.isGridView
+        
+        setupNotificationObservers()
+    }
     
     // MARK: - Script Management
     func loadScripts() {
@@ -231,9 +231,27 @@ class ContentViewModel: ObservableObject {
     }
     
     func executeScript(script: ScriptFile) {
+        // DEBUG: Afficher l'ID du script à exécuter
+        print("[ContentViewModel] Exécution demandée pour script: \(script.name) avec ID: \(script.id)")
+        
+        // Mise à jour de la date d'exécution du script dans la liste principale
+        if let index = self.scripts.firstIndex(where: { $0.id == script.id }) {
+            self.scripts[index].lastExecuted = Date()
+        }
+        
+        // 1. Gestion du RunningScript (pour l'affichage dans l'interface)
+        processRunningScript(script)
+        
+        // 2. Exécution du script via ScriptProcessManager
+        executeScriptProcess(script)
+    }
+    
+    // Traite les aspects UI du script en cours d'exécution
+    private func processRunningScript(_ script: ScriptFile) {
         // Vérifier si ce script est déjà dans la liste des scripts exécutés
         if runningScriptsVM.scripts.contains(where: { $0.id == script.id }) {
             // Le script existe déjà dans la liste, le réinitialiser
+            print("[ContentViewModel] Script déjà existant dans runningScriptsVM, réinitialisation...")
             let now = Date()
             runningScriptsVM.updateScript(
                 id: script.id,
@@ -244,25 +262,29 @@ class ContentViewModel: ObservableObject {
             // Mettre à jour le temps de démarrage
             runningScriptsVM.resetScriptStartTime(id: script.id, startTime: now)
         } else {
-            // Créer un nouvel objet RunningScript
+            // Créer un nouvel objet RunningScript avec le MÊME ID que celui du ScriptFile
+            print("[ContentViewModel] Création d'un nouveau RunningScript avec ID original: \(script.id)")
             let newRunningScript = RunningScript(
-                id: script.id,
+                id: script.id,  // IMPORTANT: Utiliser l'ID du ScriptFile original
                 name: script.name,
                 startTime: Date(),
-                output: "Démarrage de l'exécution...\n"
+                output: "Démarrage de l'exécution...\n",
+                isSelected: true, // Sélectionner automatiquement
+                status: .running
             )
             
             // Ajouter le script à la liste des scripts en cours
             runningScriptsVM.addScript(newRunningScript)
+            
+            // Sélectionner explicitement ce script
+            runningScriptsVM.selectScript(id: script.id)
         }
-        
-        // Mise à jour de la date d'exécution du script dans la liste principale
-        if let index = self.scripts.firstIndex(where: { $0.id == script.id }) {
-            self.scripts[index].lastExecuted = Date()
-        }
-        
+    }
+    
+    // Gère l'exécution du processus du script
+    private func executeScriptProcess(_ script: ScriptFile) {
         // Résoudre le chemin absolu si c'est un chemin relatif
-            let resolvedScript = ScriptFile(
+        let resolvedScript = ScriptFile(
             name: script.name,
             path: resolvePathIfNeeded(script.path),
             isFavorite: script.isFavorite,
@@ -271,14 +293,28 @@ class ContentViewModel: ObservableObject {
             tags: script.tags
         )
         
+        // Conserver l'ID original du script pour l'utiliser dans la mise à jour
+        let originalScriptId = script.id
+        
         // Exécuter le script et s'abonner aux mises à jour
+        print("[ContentViewModel] Lancement de l'exécution avec ScriptProcessManager pour ID: \(originalScriptId)")
         let outputPublisher = scriptManager.executeScript(script: resolvedScript)
         
         outputPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] (scriptId, output, status, endTime) in
-                // Mettre à jour la sortie du script correspondant
-                self?.runningScriptsVM.updateScript(id: scriptId, output: output, status: status, endTime: endTime)
+                guard let self = self else { return }
+                
+                // SOLUTION DE CONTOURNEMENT: Utiliser l'ID original au lieu de celui reçu
+                print("[ContentViewModel] Réception mise à jour pour scriptId: \(scriptId), utilisant l'ID original: \(originalScriptId)")
+                
+                // Mettre à jour la sortie du script correspondant avec l'ID original
+                self.runningScriptsVM.updateScript(id: originalScriptId, output: output, status: status, endTime: endTime)
+                
+                // Notifier explicitement le ViewModel des changements
+                DispatchQueue.main.async {
+                    self.runningScriptsVM.objectWillChange.send()
+                }
             }
             .store(in: &cancellables)
     }

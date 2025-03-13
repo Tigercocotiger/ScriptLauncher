@@ -4,6 +4,7 @@
 //
 //  Created for ScriptLauncher on 04/03/2025.
 //  Updated on 05/03/2025.
+//  Updated on 14/03/2025. - Fixed log display issues
 //
 
 import SwiftUI
@@ -13,6 +14,9 @@ struct RunningScriptsView: View {
     let isDarkMode: Bool
     let onScriptSelect: (UUID) -> Void
     let onScriptCancel: (UUID) -> Void
+    
+    // Forcer le rafraîchissement
+    @State private var refreshID = UUID()
     
     var body: some View {
         VStack(spacing: 0) {
@@ -92,6 +96,8 @@ struct RunningScriptsView: View {
                     .padding(.horizontal, DesignSystem.spacing)
                 }
                 .frame(maxHeight: .infinity) // Prend toute la hauteur disponible
+                // IMPORTANT: ID pour forcer le rafraîchissement
+                .id("running-scripts-list-\(refreshID)")
             }
             
             Spacer()
@@ -108,6 +114,12 @@ struct RunningScriptsView: View {
             x: 0,
             y: DesignSystem.shadowY
         )
+        // IMPORTANT: S'abonner aux changements du viewModel
+        .onReceive(viewModel.objectWillChange) { _ in
+            // Forcer le rafraîchissement de la vue
+            refreshID = UUID()
+            print("[RunningScriptsView] Rafraîchissement forcé")
+        }
     }
 }
 
@@ -145,6 +157,12 @@ struct RunningScriptRow: View {
                 .foregroundColor(DesignSystem.textPrimary(for: isDarkMode))
             
             Spacer()
+            
+            // DEBUG: Affichage de l'ID (temporaire)
+            Text("ID: \(script.id.uuidString.prefix(8))...")
+                .font(.system(size: 8))
+                .foregroundColor(.gray)
+                .padding(.trailing, 4)
             
             // Temps d'exécution écoulé - s'actualise automatiquement grâce au ViewModel
             Text(script.elapsedTime)

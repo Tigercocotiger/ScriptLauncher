@@ -4,6 +4,7 @@
 //
 //  Created for ScriptLauncher on 04/03/2025.
 //  Updated on 05/03/2025.
+//  Updated on 14/03/2025. - Fixed log display issues
 //
 
 import SwiftUI
@@ -11,6 +12,9 @@ import SwiftUI
 struct MultiResultSection: View {
     @ObservedObject var viewModel: RunningScriptsViewModel
     let isDarkMode: Bool
+    
+    // Pour forcer le rafraîchissement
+    @State private var refreshID = UUID()
     
     private var selectedScript: RunningScript? {
         viewModel.scripts.first { $0.id == viewModel.selectedScriptId }
@@ -26,7 +30,7 @@ struct MultiResultSection: View {
                 .padding(.top, DesignSystem.spacing)
                 .padding(.bottom, 8)
             
-            // Zone de résultat
+            // Zone de résultat avec console de logs
             ZStack {
                 if viewModel.scripts.isEmpty {
                     VStack(spacing: DesignSystem.smallSpacing) {
@@ -49,12 +53,27 @@ struct MultiResultSection: View {
                             .multilineTextAlignment(.center)
                     }
                 } else if let script = selectedScript {
-                    ScrollView {
-                        Text(script.output)
-                            .font(.system(.body, design: .monospaced))
-                            .foregroundColor(DesignSystem.textPrimary(for: isDarkMode))
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(DesignSystem.spacing)
+                    // Utilisation d'un ScrollViewReader pour l'auto-défilement
+                    ScrollViewReader { scrollProxy in
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: 0) {
+                                // Affichage de la sortie du script
+                                Text(script.output)
+                                    .font(.system(.body, design: .monospaced))
+                                    .foregroundColor(DesignSystem.textPrimary(for: isDarkMode))
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(DesignSystem.spacing)
+                                    .id("output-end") // ID pour le défilement automatique
+                            }
+                        }
+                        .onChange(of: script.output) { _ in
+                            // Défilement automatique à chaque mise à jour
+                            withAnimation {
+                                scrollProxy.scrollTo("output-end", anchor: .bottom)
+                            }
+                        }
+                        // IMPORTANT: Forcer le rafraîchissement avec un ID unique qui change lorsque le contenu change
+                        .id("scroll-container-\(script.id)-\(script.output.hashValue)")
                     }
                 }
             }
@@ -67,7 +86,7 @@ struct MultiResultSection: View {
             )
             .padding(.horizontal, DesignSystem.spacing)
             
-            // Barre d'état du script
+            // Barre d'état du script - SANS le bouton de rafraîchissement
             if let script = selectedScript {
                 HStack(spacing: DesignSystem.smallSpacing) {
                     // Indicateur de statut
@@ -91,6 +110,12 @@ struct MultiResultSection: View {
                         .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
                     
                     Spacer()
+                    
+                    // Taille du texte
+                    Text("\(script.output.count) caractères")
+                        .font(.caption2)
+                        .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
+                        .padding(.horizontal, 4)
                     
                     // Temps d'exécution - s'actualise automatiquement grâce au ViewModel
                     if script.status == .running {
@@ -119,6 +144,17 @@ struct MultiResultSection: View {
             x: 0,
             y: DesignSystem.shadowY
         )
+        // IMPORTANT: ForceUpdate à chaque changement du ViewModel
+        .onReceive(viewModel.objectWillChange) { _ in
+            self.refreshID = UUID()
+        }
+        // S'actualiser périodiquement uniquement pour les scripts en cours d'exécution
+        .onReceive(Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()) { _ in
+            // Forcer la mise à jour uniquement si un script est en cours d'exécution
+            if let script = selectedScript, script.status == .running {
+                self.refreshID = UUID()
+            }
+        }
     }
     
     // Format de l'heure pour l'affichage
@@ -128,30 +164,4 @@ struct MultiResultSection: View {
         formatter.timeStyle = .medium
         return formatter.string(from: date)
     }
-}
-
-// MARK: - Preview
-#Preview("MultiResultSection - With Script") {
-    // Créer un ViewModel pour la prévisualisation
-    let viewModel = RunningScriptsViewModel()
-    let scriptId = UUID()
-    viewModel.addScript(RunningScript(id: scriptId, name: "Backup Script", startTime: Date().addingTimeInterval(-65), output: "Processing...\nStep 1 complete\nStep 2 in progress...", isSelected: true, status: .running))
-    viewModel.addScript(RunningScript(id: UUID(), name: "Export Data", startTime: Date().addingTimeInterval(-120), output: "Exporting data..."))
-    viewModel.selectScript(id: scriptId)
-    
-    return MultiResultSection(
-        viewModel: viewModel,
-        isDarkMode: false
-    )
-    .frame(height: 300)
-    .padding()
-}
-
-#Preview("MultiResultSection - Empty") {
-    MultiResultSection(
-        viewModel: RunningScriptsViewModel(),
-        isDarkMode: true
-    )
-    .frame(height: 300)
-    .padding()
 }
