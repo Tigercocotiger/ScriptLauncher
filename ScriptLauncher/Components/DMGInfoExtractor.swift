@@ -161,7 +161,11 @@ struct DMGInstallerCreatorView: View {
     @State private var sourcePath: String = ""
     @State private var volumeName: String = ""
     @State private var appPath: String = ""
-    @State private var createBackup: Bool = false
+    @State private var createBackup: Bool = true
+    
+    // Nouveau champ pour le nom du fichier script
+    @State private var scriptFileName: String = ""
+    @State private var scriptFileNameEdited: Bool = false
     
     // État pour les alertes et messages
     @State private var showAlert: Bool = false
@@ -276,6 +280,24 @@ struct DMGInstallerCreatorView: View {
                             value: $appName,
                             isDarkMode: isDarkMode
                         )
+                        .onChange(of: appName) { newValue in
+                            // Mettre à jour le nom du fichier seulement si l'utilisateur ne l'a pas modifié
+                            if !scriptFileNameEdited && !newValue.isEmpty {
+                                scriptFileName = newValue.replacingOccurrences(of: " ", with: "_") + "_Installer"
+                            }
+                        }
+                        
+                        // Nouveau champ: Nom du fichier script
+                        ParameterTextField(
+                            label: "Nom du fichier script (sans extension)",
+                            placeholder: "Ex: Focusrite_Control_2_Installer",
+                            value: $scriptFileName,
+                            isDarkMode: isDarkMode
+                        )
+                        .onChange(of: scriptFileName) { _ in
+                            // Marquer que l'utilisateur a édité ce champ
+                            scriptFileNameEdited = true
+                        }
                         
                         // Description
                         ParameterTextField(
@@ -409,7 +431,8 @@ struct DMGInstallerCreatorView: View {
         return !appName.isEmpty &&
         !sourcePath.isEmpty &&
         !volumeName.isEmpty &&
-        !appPath.isEmpty
+        !appPath.isEmpty &&
+        !scriptFileName.isEmpty  // Ajouter vérification du nom de fichier
     }
     
     // Fonction pour sélectionner un fichier DMG et extraire ses informations
@@ -422,6 +445,11 @@ struct DMGInstallerCreatorView: View {
             let fileName = url.deletingPathExtension().lastPathComponent
             if appName.isEmpty {
                 appName = fileName
+            }
+            
+            // Générer un nom de fichier par défaut si non édité
+            if !scriptFileNameEdited && scriptFileName.isEmpty {
+                scriptFileName = appName.replacingOccurrences(of: " ", with: "_") + "_Installer"
             }
             
             // Essayer de deviner le nom du volume
@@ -450,8 +478,8 @@ struct DMGInstallerCreatorView: View {
         // Générer le contenu du script
         let scriptContent = createDMGInstallerContent()
         
-        // Générer le nom de fichier avec extension .scpt
-        let fileName = appName.replacingOccurrences(of: " ", with: "_") + "_Installer.scpt"
+        // Générer le nom de fichier avec extension .scpt (maintenant personnalisable)
+        let fileName = scriptFileName.replacingOccurrences(of: " ", with: "_") + ".scpt"
         
         // Utiliser le dossier de scripts dans Resources
         let scriptsFolderPath = ConfigManager.shared.getScriptsFolderPath()
@@ -537,7 +565,7 @@ struct DMGInstallerCreatorView: View {
             // Vérifier si la compilation a réussi
             if task.terminationStatus == 0 {
                 // Afficher un message de succès
-                alertMessage = "Le script d'installation pour \(appName) a été créé avec succès. Vous pouvez maintenant ajouter des tags au script dans la liste principale."
+                alertMessage = "Le script d'installation pour \(appName) a été créé avec succès sous le nom '\(fileName)'. Vous pouvez maintenant ajouter des tags au script dans la liste principale."
                 showAlert = true
                 
                 // Recharger la liste des scripts
@@ -553,6 +581,7 @@ struct DMGInstallerCreatorView: View {
         }
     }
     
+    // Génère le contenu du script d'installation DMG avec des chemins relatifs
     // Génère le contenu du script d'installation DMG avec des chemins relatifs
     private func createDMGInstallerContent() -> String {
         // Formatage de la date
@@ -619,11 +648,18 @@ struct DMGInstallerCreatorView: View {
                 -- Démonter l'image
                 my unmountDMG(mountedVolumeName)
                 
+                -- Nettoyer les fichiers temporaires
+                my cleanupTemporaryFiles()
+                
                 -- Succès !
                 my logMessage("Installation terminée avec succès!", "success")
                 return "Installation terminée."
             on error errMsg
                 my logMessage("Erreur: " & errMsg, "error")
+                
+                -- Tenter de nettoyer
+                my cleanupTemporaryFiles()
+                
                 display dialog "L'installation a échoué: " & errMsg buttons {"OK"} default button "OK" with icon stop
                 return "Installation échouée."
             end try
@@ -668,14 +704,48 @@ struct DMGInstallerCreatorView: View {
             end if
         end findDMGFile
         
-        -- Fonction pour monter le DMG
+        -- Fonction améliorée pour monter le DMG avec repli
         on mountDMG(dmgPath)
             try
-                do shell script "hdiutil attach " & quoted form of dmgPath
-                return true
+                -- Essayer d'abord la méthode simple avec agreeToLicense
+                my logMessage("Tentative de montage direct avec acceptation de licence...", "process")
+                do shell script "hdiutil attach " & quoted form of dmgPath & " -nobrowse -noverify -agreeToLicense"
+                
+                -- Vérifier si le volume est monté
+                delay 2
+                set volumePath to "/Volumes/" & mountedVolumeName
+                if my fileExists(volumePath) then
+                    my logMessage("Montage réussi avec la méthode simple", "success")
+                    return true
+                end if
+                
+                -- Si on arrive ici, c'est que le volume n'est pas monté malgré la commande réussie
+                error "Volume non trouvé après montage simple"
             on error errMsg
-                my logMessage("Erreur de montage: " & errMsg, "error")
-                return false
+                -- Méthode simple a échoué, passer à la méthode de conversion
+                my logMessage("Montage simple échoué: " & errMsg, "warning")
+                my logMessage("Tentative avec conversion du DMG...", "process")
+                
+                try
+                    -- Nettoyage préventif
+                    do shell script "rm -f /tmp/converted_dmg.dmg"
+                    
+                    -- Convertir et monter
+                    do shell script "hdiutil convert " & quoted form of dmgPath & " -format UDRW -o \"/tmp/converted_dmg\" && hdiutil attach \"/tmp/converted_dmg.dmg\""
+                    
+                    -- Vérifier si le volume est monté
+                    delay 2
+                    set volumePath to "/Volumes/" & mountedVolumeName
+                    if my fileExists(volumePath) then
+                        my logMessage("Montage réussi avec la méthode de conversion", "success")
+                        return true
+                    else
+                        error "Volume non trouvé après conversion et montage"
+                    end if
+                on error conversionErr
+                    my logMessage("Échec de toutes les méthodes de montage: " & conversionErr, "error")
+                    return false
+                end try
             end try
         end mountDMG
         
@@ -713,6 +783,16 @@ struct DMGInstallerCreatorView: View {
                 return false
             end try
         end unmountDMG
+        
+        -- Fonction pour nettoyer les fichiers temporaires
+        on cleanupTemporaryFiles()
+            try
+                do shell script "rm -f /tmp/converted_dmg.dmg"
+                my logMessage("Fichiers temporaires nettoyés", "info")
+            on error
+                -- Ignorer les erreurs de nettoyage
+            end try
+        end cleanupTemporaryFiles
         
         -- Utilitaire pour trouver la dernière occurrence d'un caractère dans une chaîne
         on lastIndexOf(inputString, searchChar)
