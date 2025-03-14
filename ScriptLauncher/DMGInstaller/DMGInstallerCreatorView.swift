@@ -2,16 +2,8 @@
 //  DMGInstallerCreatorView.swift
 //  ScriptLauncher
 //
-//  Created by MPM on 14/03/2025.
-//
-
-
-//
-//  DMGInstallerCreatorView.swift
-//  ScriptLauncher
-//
 //  Created on 10/03/2025.
-//  Updated on 15/03/2025. - Refactored into separate file
+//  Updated on 16/03/2025. - Added support for PKG installation
 //
 
 import SwiftUI
@@ -48,6 +40,10 @@ struct DMGInstallerCreatorView: View {
     @State private var alertMessage: String = ""
     @State private var isAnalyzingDMG: Bool = false
     @State private var isCreatingScript: Bool = false
+    
+    // Stockage du dernier type d'installation détecté
+    @State private var lastDetectedInstallationType: DMGScriptGenerator.InstallationType?
+    @State private var installationTypeText: String = "Application (.app)"
     
     // Créer une instance du DMGInfoExtractor
     private let dmgExtractor = DMGInfoExtractor()
@@ -94,6 +90,20 @@ struct DMGInstallerCreatorView: View {
                                 .font(.body)
                                 .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
                                 .padding(.top, 2)
+                                
+                            // Afficher le type d'installation détecté
+                            if let installationType = lastDetectedInstallationType {
+                                HStack {
+                                    Image(systemName: installationType == .application ? "app.badge" : "doc.badge")
+                                        .foregroundColor(DesignSystem.accentColor(for: isDarkMode))
+                                    
+                                    Text("Type détecté : \(installationTypeText)")
+                                        .font(.callout)
+                                        .foregroundColor(DesignSystem.accentColor(for: isDarkMode))
+                                        .fontWeight(.medium)
+                                }
+                                .padding(.top, 6)
+                            }
                         }
                     }
                     
@@ -191,10 +201,10 @@ struct DMGInstallerCreatorView: View {
                                 isDarkMode: isDarkMode
                             )
                             
-                            // Chemin de l'application
+                            // Chemin de l'application ou du package
                             ParameterTextField(
-                                label: "Chemin relatif de l'application",
-                                placeholder: "Ex: /Focusrite Control 2.app",
+                                label: lastDetectedInstallationType == .package ? "Chemin relatif du package" : "Chemin relatif de l'application",
+                                placeholder: lastDetectedInstallationType == .package ? "Ex: /Install.pkg" : "Ex: /Focusrite Control 2.app",
                                 value: $appPath,
                                 isDarkMode: isDarkMode
                             )
@@ -287,15 +297,28 @@ struct DMGInstallerCreatorView: View {
             
             // Analyser le DMG pour extraire plus d'informations
             isAnalyzingDMG = true
-            dmgExtractor.mountAndExtractInfo(dmgPath: dmgPath) { (detectedVolumeName, detectedAppPath) in
+            dmgExtractor.mountAndExtractInfo(dmgPath: dmgPath) { (detectedVolumeName, detectedPath, installationType) in
                 isAnalyzingDMG = false
+                
+                // Stocker le type d'installation détecté
+                lastDetectedInstallationType = installationType
+                
+                // Mettre à jour le texte du type d'installation
+                switch installationType {
+                case .application:
+                    installationTypeText = "Application (.app)"
+                case .package:
+                    installationTypeText = "Package d'installation (.pkg)"
+                case .unknown:
+                    installationTypeText = "Type inconnu"
+                }
                 
                 if let detectedVolumeName = detectedVolumeName {
                     volumeName = detectedVolumeName
                 }
                 
-                if let detectedAppPath = detectedAppPath {
-                    appPath = detectedAppPath
+                if let detectedPath = detectedPath {
+                    appPath = detectedPath
                 }
             }
         }
@@ -325,7 +348,7 @@ struct DMGInstallerCreatorView: View {
                                                            withIntermediateDirectories: true)
                 } catch {
                     print("Erreur lors de la création du dossier DMG: \(error)")
-                     updateUIAfterFailure(with: "Erreur lors de la création du dossier DMG: \(error.localizedDescription)")
+                    updateUIAfterFailure(with: "Erreur lors de la création du dossier DMG: \(error.localizedDescription)")
                     return
                 }
             }
@@ -366,7 +389,7 @@ struct DMGInstallerCreatorView: View {
                 
                 // Si l'utilisateur a annulé, arrêter le processus
                 if !shouldContinue {
-                     updateUIAfterFailure(with: "")
+                    updateUIAfterFailure(with: "")
                     return
                 }
                 
@@ -375,9 +398,18 @@ struct DMGInstallerCreatorView: View {
                     try FileManager.default.removeItem(atPath: filePath)
                 } catch {
                     print("Erreur lors de la suppression de l'ancien fichier: \(error)")
-                     updateUIAfterFailure(with: "Erreur lors de la suppression de l'ancien fichier: \(error.localizedDescription)")
+                    updateUIAfterFailure(with: "Erreur lors de la suppression de l'ancien fichier: \(error.localizedDescription)")
                     return
                 }
+            }
+            
+            // Créer les paramètres du script en fonction du type d'installation détecté
+            let installationType: DMGScriptGenerator.InstallationType
+            if let detectedType = lastDetectedInstallationType {
+                installationType = detectedType
+            } else {
+                // Par défaut, utiliser le type d'application
+                installationType = .application
             }
             
             // Créer le contenu du script
@@ -386,9 +418,10 @@ struct DMGInstallerCreatorView: View {
                 description: description,
                 author: author,
                 volumeName: volumeName,
-                appPath: appPath,
+                targetPath: appPath,
                 dmgFileName: dmgFileName,
-                createBackup: createBackup
+                createBackup: createBackup,
+                installationType: installationType
             )
             
             let scriptContent = DMGScriptGenerator.generateScript(params: scriptParams)
@@ -400,7 +433,8 @@ struct DMGInstallerCreatorView: View {
                 if success {
                     // Afficher un message de succès
                     await MainActor.run {
-                        alertMessage = "Le script d'installation pour \(appName) a été créé avec succès sous le nom '\(fileName)'."
+                        let installTypeStr = (installationType == .application) ? "application" : "package"
+                        alertMessage = "Le script d'installation pour \(appName) (\(installTypeStr)) a été créé avec succès sous le nom '\(fileName)'."
                         if !dmgCopySuccess {
                             alertMessage += "\n\nAttention: Le fichier DMG source n'a pas pu être copié dans le dossier de scripts."
                         }
@@ -408,10 +442,10 @@ struct DMGInstallerCreatorView: View {
                         isCreatingScript = false
                     }
                 } else {
-                     updateUIAfterFailure(with: "La compilation du script a échoué sans erreur spécifique.")
+                    updateUIAfterFailure(with: "La compilation du script a échoué sans erreur spécifique.")
                 }
             } catch {
-                 updateUIAfterFailure(with: error.localizedDescription)
+                updateUIAfterFailure(with: error.localizedDescription)
             }
         }
     }

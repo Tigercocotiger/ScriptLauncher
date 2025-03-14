@@ -2,16 +2,8 @@
 //  DMGInfoExtractor.swift
 //  ScriptLauncher
 //
-//  Created by MPM on 14/03/2025.
-//
-
-
-//
-//  DMGInfoExtractor.swift
-//  ScriptLauncher
-//
 //  Created on 10/03/2025.
-//  Updated on 15/03/2025. - Refactored into separate file
+//  Updated on 16/03/2025. - Added package detection
 //
 
 import SwiftUI
@@ -47,7 +39,7 @@ class DMGInfoExtractor {
     }
     
     // Fonction pour monter temporairement le DMG et extraire des informations
-    func mountAndExtractInfo(dmgPath: String, completion: @escaping (String?, String?) -> Void) {
+    func mountAndExtractInfo(dmgPath: String, completion: @escaping (String?, String?, DMGScriptGenerator.InstallationType) -> Void) {
         // Créer une tâche pour monter l'image
         let task = Process()
         task.launchPath = "/usr/bin/hdiutil"
@@ -80,35 +72,56 @@ class DMGInfoExtractor {
                         }
                     }
                     
-                    // Si nous avons trouvé un point de montage, chercher les applications
+                    // Si nous avons trouvé un point de montage, chercher les applications ou packages
                     if let mountPoint = mountPoint {
-                        // Chercher les applications .app dans le volume monté
-                        let appPath = self.findAppInMountedVolume(mountPoint)
-                        
                         // Extraire seulement le nom du volume à partir du chemin complet
                         let volumeName = mountPoint.replacingOccurrences(of: "/Volumes/", with: "")
                         
-                        // Démonter l'image
-                        self.unmountDMG(mountPoint)
-                        
-                        // Appeler le callback avec les informations
-                        DispatchQueue.main.async {
-                            completion(volumeName, appPath)
+                        // Chercher d'abord les fichiers .pkg dans le volume monté
+                        if let pkgPath = self.findPackageInMountedVolume(mountPoint) {
+                            print("🔍 Fichier PKG détecté: \(pkgPath)")
+                            
+                            // Démonter l'image
+                            self.unmountDMG(mountPoint)
+                            
+                            // Appeler le callback avec les informations et le type PACKAGE
+                            DispatchQueue.main.async {
+                                completion(volumeName, pkgPath, .package)
+                            }
+                        }
+                        // Si pas de pkg, chercher les applications .app
+                        else if let appPath = self.findAppInMountedVolume(mountPoint) {
+                            // Démonter l'image
+                            self.unmountDMG(mountPoint)
+                            
+                            // Appeler le callback avec les informations et le type APPLICATION
+                            DispatchQueue.main.async {
+                                completion(volumeName, appPath, .application)
+                            }
+                        }
+                        // Ni app ni pkg trouvé
+                        else {
+                            // Démonter l'image
+                            self.unmountDMG(mountPoint)
+                            
+                            DispatchQueue.main.async {
+                                completion(volumeName, nil, .unknown)
+                            }
                         }
                     } else {
                         DispatchQueue.main.async {
-                            completion(nil, nil)
+                            completion(nil, nil, .unknown)
                         }
                     }
                 } else {
                     DispatchQueue.main.async {
-                        completion(nil, nil)
+                        completion(nil, nil, .unknown)
                     }
                 }
             } catch {
                 print("Erreur lors du montage du DMG: \(error)")
                 DispatchQueue.main.async {
-                    completion(nil, nil)
+                    completion(nil, nil, .unknown)
                 }
             }
         }
@@ -131,6 +144,27 @@ class DMGInfoExtractor {
             return nil
         } catch {
             print("Erreur lors de l'analyse du volume monté: \(error)")
+            return nil
+        }
+    }
+    
+    // Nouvelle fonction pour trouver les packages .pkg dans un volume monté
+    private func findPackageInMountedVolume(_ mountPoint: String) -> String? {
+        do {
+            let fileManager = FileManager.default
+            let files = try fileManager.contentsOfDirectory(atPath: mountPoint)
+            
+            // Chercher les fichiers .pkg
+            for file in files {
+                if file.hasSuffix(".pkg") {
+                    // Retourner uniquement le chemin relatif du package
+                    return "/" + file
+                }
+            }
+            
+            return nil
+        } catch {
+            print("Erreur lors de l'analyse du volume monté pour les packages: \(error)")
             return nil
         }
     }
