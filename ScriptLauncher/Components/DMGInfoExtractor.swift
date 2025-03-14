@@ -474,115 +474,150 @@ struct DMGInstallerCreatorView: View {
     }
     
     // Fonction pour créer le script d'installation DMG
-    private func createScript() {
-        // Générer le contenu du script
-        let scriptContent = createDMGInstallerContent()
-        
-        // Générer le nom de fichier avec extension .scpt (maintenant personnalisable)
-        let fileName = scriptFileName.replacingOccurrences(of: " ", with: "_") + ".scpt"
-        
-        // Utiliser le dossier de scripts dans Resources
-        let scriptsFolderPath = ConfigManager.shared.getScriptsFolderPath()
-        let filePath = (scriptsFolderPath as NSString).appendingPathComponent(fileName)
-        
-        // Créer un dossier DMG pour stocker les images disques
-        let dmgFolderPath = (scriptsFolderPath as NSString).appendingPathComponent("DMG")
-        if !FileManager.default.fileExists(atPath: dmgFolderPath) {
-            do {
-                try FileManager.default.createDirectory(at: URL(fileURLWithPath: dmgFolderPath),
-                                                        withIntermediateDirectories: true)
-            } catch {
-                print("Erreur lors de la création du dossier DMG: \(error)")
-            }
-        }
-        
-        // Copier le DMG dans le dossier DMG si nécessaire
-        let dmgFileName = URL(fileURLWithPath: sourcePath).lastPathComponent
-        let destDMGPath = (dmgFolderPath as NSString).appendingPathComponent(dmgFileName)
-        
-        if sourcePath != destDMGPath {
-            do {
-                // Si le fichier existe déjà, le supprimer d'abord
-                if FileManager.default.fileExists(atPath: destDMGPath) {
-                    try FileManager.default.removeItem(atPath: destDMGPath)
+            func createScript() {
+            // Générer le contenu du script
+            let scriptContent = createDMGInstallerContent()
+            
+            // Générer le nom de fichier avec extension .scpt
+            let fileName = scriptFileName.replacingOccurrences(of: " ", with: "_") + ".scpt"
+            
+            // Utiliser le dossier de scripts dans Resources
+            let scriptsFolderPath = ConfigManager.shared.getScriptsFolderPath()
+            let filePath = (scriptsFolderPath as NSString).appendingPathComponent(fileName)
+            
+            // Créer un dossier DMG pour stocker les images disques
+            let dmgFolderPath = (scriptsFolderPath as NSString).appendingPathComponent("DMG")
+            
+            // Exécuter la création du script en arrière-plan
+            DispatchQueue.global(qos: .userInitiated).async {
+                // Créer le dossier DMG s'il n'existe pas déjà
+                if !FileManager.default.fileExists(atPath: dmgFolderPath) {
+                    do {
+                        try FileManager.default.createDirectory(at: URL(fileURLWithPath: dmgFolderPath),
+                                                               withIntermediateDirectories: true)
+                    } catch {
+                        print("Erreur lors de la création du dossier DMG: \(error)")
+                    }
                 }
                 
-                // Copier le fichier
-                try FileManager.default.copyItem(atPath: sourcePath, toPath: destDMGPath)
-            } catch {
-                print("Erreur lors de la copie du DMG: \(error)")
+                // Copier le DMG dans le dossier DMG si nécessaire
+                let dmgFileName = URL(fileURLWithPath: self.sourcePath).lastPathComponent
+                let destDMGPath = (dmgFolderPath as NSString).appendingPathComponent(dmgFileName)
                 
-                // Afficher un avertissement mais continuer
-                let alert = NSAlert()
-                alert.messageText = "Avertissement"
-                alert.informativeText = "Le fichier DMG source n'a pas pu être copié dans le dossier de scripts. Le script créé utilisera le chemin original."
-                alert.alertStyle = .warning
-                alert.addButton(withTitle: "Continuer")
-                alert.runModal()
-            }
-        }
-        
-        // Vérifier si le fichier existe déjà
-        if FileManager.default.fileExists(atPath: filePath) {
-            // Demander confirmation pour écraser le fichier
-            let alert = NSAlert()
-            alert.messageText = "Fichier déjà existant"
-            alert.informativeText = "Un script nommé '\(fileName)' existe déjà. Voulez-vous l'écraser ?"
-            alert.alertStyle = .warning
-            alert.addButton(withTitle: "Écraser")
-            alert.addButton(withTitle: "Annuler")
-            
-            let response = alert.runModal()
-            if response == .alertSecondButtonReturn {
-                return
-            }
-            
-            // Supprimer l'ancien fichier
-            do {
-                try FileManager.default.removeItem(atPath: filePath)
-            } catch {
-                print("Erreur lors de la suppression de l'ancien fichier: \(error)")
-            }
-        }
-        
-        // Créer le fichier AppleScript
-        do {
-            // Créer un fichier temporaire pour le contenu
-            let tempDirectory = FileManager.default.temporaryDirectory
-            let tempFilePath = tempDirectory.appendingPathComponent(UUID().uuidString + ".applescript")
-            
-            // Écrire le contenu dans le fichier temporaire
-            try scriptContent.write(to: tempFilePath, atomically: true, encoding: .utf8)
-            
-            // Compiler le script AppleScript
-            let task = Process()
-            task.launchPath = "/usr/bin/osacompile"
-            task.arguments = ["-o", filePath, tempFilePath.path]
-            
-            try task.run()
-            task.waitUntilExit()
-            
-            // Vérifier si la compilation a réussi
-            if task.terminationStatus == 0 {
-                // Afficher un message de succès
-                alertMessage = "Le script d'installation pour \(appName) a été créé avec succès sous le nom '\(fileName)'. Vous pouvez maintenant ajouter des tags au script dans la liste principale."
-                showAlert = true
+                var dmgCopySuccess = true
+                if self.sourcePath != destDMGPath {
+                    do {
+                        // Si le fichier existe déjà, le supprimer d'abord
+                        if FileManager.default.fileExists(atPath: destDMGPath) {
+                            try FileManager.default.removeItem(atPath: destDMGPath)
+                        }
+                        
+                        // Copier le fichier
+                        try FileManager.default.copyItem(atPath: self.sourcePath, toPath: destDMGPath)
+                    } catch {
+                        print("Erreur lors de la copie du DMG: \(error)")
+                        dmgCopySuccess = false
+                    }
+                }
                 
-                // Recharger la liste des scripts
-                onScriptCreated()
-            } else {
-                alertMessage = "Erreur lors de la compilation du script. Vérifiez les paramètres et réessayez."
-                showAlert = true
+                // Vérifier si le fichier existe déjà
+                var shouldContinue = true
+                if FileManager.default.fileExists(atPath: filePath) {
+                    // Retourner au thread principal pour afficher l'alerte
+                    DispatchQueue.main.sync {
+                        // Demander confirmation pour écraser le fichier
+                        let alert = NSAlert()
+                        alert.messageText = "Fichier déjà existant"
+                        alert.informativeText = "Un script nommé '\(fileName)' existe déjà. Voulez-vous l'écraser ?"
+                        alert.alertStyle = .warning
+                        alert.addButton(withTitle: "Écraser")
+                        alert.addButton(withTitle: "Annuler")
+                        
+                        let response = alert.runModal()
+                        shouldContinue = (response == .alertFirstButtonReturn)
+                    }
+                    
+                    // Si l'utilisateur a annulé, arrêter le processus
+                    if !shouldContinue {
+                        return
+                    }
+                    
+                    // Supprimer l'ancien fichier
+                    do {
+                        try FileManager.default.removeItem(atPath: filePath)
+                    } catch {
+                        print("Erreur lors de la suppression de l'ancien fichier: \(error)")
+                    }
+                }
+                
+                // Créer le fichier AppleScript de manière asynchrone
+                var compilationSuccess = false
+                var compilationError = ""
+                
+                do {
+                    // Créer un fichier temporaire pour le contenu
+                    let tempDirectory = FileManager.default.temporaryDirectory
+                    let tempFilePath = tempDirectory.appendingPathComponent(UUID().uuidString + ".applescript")
+                    
+                    // Écrire le contenu dans le fichier temporaire
+                    try scriptContent.write(to: tempFilePath, atomically: true, encoding: .utf8)
+                    
+                    // Compiler le script AppleScript
+                    let task = Process()
+                    task.executableURL = URL(fileURLWithPath: "/usr/bin/osacompile")
+                    task.arguments = ["-o", filePath, tempFilePath.path]
+                    
+                    let pipe = Pipe()
+                    task.standardError = pipe
+                    
+                    try task.run()
+                    task.waitUntilExit()
+                    
+                    // Capturer toute erreur de sortie
+                    let errorData = pipe.fileHandleForReading.readDataToEndOfFile()
+                    if let errorText = String(data: errorData, encoding: .utf8), !errorText.isEmpty {
+                        compilationError = errorText
+                    }
+                    
+                    // Vérifier si la compilation a réussi
+                    compilationSuccess = (task.terminationStatus == 0)
+                    
+                    // Nettoyer les fichiers temporaires
+                    try FileManager.default.removeItem(at: tempFilePath)
+                } catch {
+                    print("Erreur lors de la création du script: \(error)")
+                    compilationError = error.localizedDescription
+                }
+                
+                // Mettre à jour l'interface sur le thread principal
+                DispatchQueue.main.async {
+                    // Afficher un message de succès ou d'erreur
+                    if compilationSuccess {
+                        // Utiliser l'alerte déjà définie dans la vue
+                        self.alertMessage = "Le script d'installation pour \(self.appName) a été créé avec succès sous le nom '\(fileName)'."
+                        if !dmgCopySuccess {
+                            self.alertMessage += "\n\nAttention: Le fichier DMG source n'a pas pu être copié dans le dossier de scripts."
+                        }
+                        self.showAlert = true
+                        
+                        // Recharger la liste des scripts
+                        self.onScriptCreated()
+                    } else {
+                        // Afficher un message d'erreur
+                        let alert = NSAlert()
+                        alert.messageText = "Erreur lors de la création du script"
+                        alert.informativeText = "La compilation a échoué avec l'erreur suivante:\n\n\(compilationError)"
+                        alert.alertStyle = .critical
+                        alert.addButton(withTitle: "OK")
+                        alert.runModal()
+                    }
+                }
             }
-        } catch {
-            print("Erreur lors de la création du script: \(error)")
-            alertMessage = "Erreur lors de la création du script: \(error.localizedDescription)"
-            showAlert = true
         }
-    }
+    // Version corrigée de la fonction createDMGInstallerContent() inspirée du script fonctionnel
     
-    // Génère le contenu du script d'installation DMG avec des chemins relatifs
-    // Génère le contenu du script d'installation DMG avec des chemins relatifs
+    // Version corrigée qui suit exactement le format du script fourni
+
     private func createDMGInstallerContent() -> String {
         // Formatage de la date
         let dateFormatter = DateFormatter()
@@ -592,6 +627,10 @@ struct DMGInstallerCreatorView: View {
         // Nom du fichier DMG sans le chemin complet
         let dmgFileName = URL(fileURLWithPath: sourcePath).lastPathComponent
         
+        // Variable booléenne sous forme de chaîne
+        let createBackupStr = createBackup ? "true" : "false"
+        
+        // Génération d'un script identique à celui qui fonctionne
         return """
         -- Script d'installation \(appName)
         -- Créé le \(currentDate)
@@ -605,238 +644,227 @@ struct DMGInstallerCreatorView: View {
 
         -- Exécution principale du script
         on run
-            -- Variables locales à l'exécution
-            set dmgPath to ""
-            set documentsPath to ""
-            set appsPath to ""
-            
-            try
-                my logMessage("Démarrage de l'installation de " & "\(appName)" & "...", "start")
-                
-                -- Trouver le fichier DMG
-                set dmgPath to my findDMGFile()
-                if dmgPath is false or dmgPath is "" then
-                    error "Installation annulée: Impossible de trouver le fichier DMG."
-                end if
-                
-                -- Chemins standards
-                set documentsPath to POSIX path of (path to documents folder)
-                set appsPath to POSIX path of (path to applications folder)
-                
-                -- Monter l'image disque
-                my logMessage("Montage de l'image disque: " & dmgPath, "process")
-                set mountResult to my mountDMG(dmgPath)
-                if mountResult is false then
-                    error "Impossible de monter l'image disque."
-                end if
-                
-                -- Copier l'application
-                my logMessage("Copie de l'application dans Applications...", "process")
-                set sourceApp to "/Volumes/" & mountedVolumeName & applicationPath
-                set copyResult to my copyApp(sourceApp, appsPath)
-                if copyResult is false then
-                    my unmountDMG(mountedVolumeName)
-                    error "Impossible de copier l'application dans le dossier Applications."
-                end if
-                
-                -- Sauvegarde optionnelle
-                if "\(createBackup)" is "true" then
-                    my logMessage("Sauvegarde du DMG dans Documents...", "process")
-                    my copyDMGToDocuments(dmgPath, documentsPath)
-                end if
-                
-                -- Démonter l'image
-                my unmountDMG(mountedVolumeName)
-                
-                -- Nettoyer les fichiers temporaires
-                my cleanupTemporaryFiles()
-                
-                -- Succès !
-                my logMessage("Installation terminée avec succès!", "success")
-                return "Installation terminée."
-            on error errMsg
-                my logMessage("Erreur: " & errMsg, "error")
-                
-                -- Tenter de nettoyer
-                my cleanupTemporaryFiles()
-                
-                display dialog "L'installation a échoué: " & errMsg buttons {"OK"} default button "OK" with icon stop
-                return "Installation échouée."
-            end try
+        \t-- Variables locales à l'exécution
+        \tset dmgPath to ""
+        \tset documentsPath to ""
+        \tset appsPath to ""
+        \t
+        \ttry
+        \t\tmy logMessage("Démarrage de l'installation de " & "\(appName)" & "...", "start")
+        \t\t\t\t
+        \t\t-- Trouver le fichier DMG
+        \t\tset dmgPath to my findDMGFile()
+        \t\tif dmgPath is false or dmgPath is "" then
+        \t\t\terror "Installation annulée: Impossible de trouver le fichier DMG."
+        \t\tend if
+        \t\t\t\t
+        \t\t-- Chemins standards
+        \t\tset documentsPath to POSIX path of (path to documents folder)
+        \t\tset appsPath to POSIX path of (path to applications folder)
+        \t\t\t\t
+        \t\t-- Monter l'image disque en utilisant la méthode de conversion
+        \t\tmy logMessage("Montage de l'image disque: " & dmgPath, "process")
+        \t\tset mountResult to my mountDMGWithConversion(dmgPath)
+        \t\tif mountResult is false then
+        \t\t\terror "Impossible de monter l'image disque."
+        \t\tend if
+        \t\t\t\t
+        \t\t-- Copier l'application
+        \t\tmy logMessage("Copie de l'application dans Applications...", "process")
+        \t\tset sourceApp to "/Volumes/" & mountedVolumeName & applicationPath
+        \t\tset copyResult to my copyApp(sourceApp, appsPath)
+        \t\tif copyResult is false then
+        \t\t\tmy unmountDMG(mountedVolumeName)
+        \t\t\terror "Impossible de copier l'application dans le dossier Applications."
+        \t\tend if
+        \t\t\t\t
+        \t\t-- Sauvegarde optionnelle
+        \t\tif "\(createBackupStr)" is "true" then
+        \t\t\tmy logMessage("Sauvegarde du DMG dans Documents...", "process")
+        \t\t\tmy copyDMGToDocuments(dmgPath, documentsPath)
+        \t\tend if
+        \t\t\t\t
+        \t\t-- Démonter l'image
+        \t\tmy unmountDMG(mountedVolumeName)
+        \t\t\t\t
+        \t\t-- Nettoyer les fichiers temporaires
+        \t\tmy cleanupTemporaryFiles()
+        \t\t\t\t
+        \t\t-- Succès !
+        \t\tmy logMessage("Installation terminée avec succès!", "success")
+        \t\treturn "Installation terminée."
+        \ton error errMsg
+        \t\tmy logMessage("Erreur: " & errMsg, "error")
+        \t\tmy cleanupTemporaryFiles()
+        \t\tdisplay dialog "L'installation a échoué: " & errMsg buttons {"OK"} default button "OK" with icon stop
+        \t\treturn "Installation échouée."
+        \tend try
         end run
+
+        -- Fonction pour monter le DMG avec conversion pour éviter la licence
+        on mountDMGWithConversion(dmgPath)
+        \ttry
+        \t\t-- Convertir et monter le DMG en une seule étape
+        \t\tmy logMessage("Conversion du DMG pour contourner la licence...", "process")
+        \t\tdo shell script "rm -f /tmp/dmg_converted.dmg && hdiutil convert " & quoted form of dmgPath & " -format UDRW -o \\"/tmp/dmg_converted\\" && hdiutil attach \\"/tmp/dmg_converted.dmg\\""
+        \t\t\t\t
+        \t\t-- Attendre un peu que le système monte le volume
+        \t\tdelay 2
+        \t\t\t\t
+        \t\t-- Vérifier si le volume est monté
+        \t\tset volumePath to "/Volumes/" & mountedVolumeName
+        \t\tset isVolumeMounted to my fileExists(volumePath)
+        \t\t\t\t
+        \t\tif isVolumeMounted then
+        \t\t\tmy logMessage("Volume monté avec succès à " & volumePath, "success")
+        \t\t\treturn true
+        \t\telse
+        \t\t\terror "Le volume n'a pas été monté correctement après conversion."
+        \t\tend if
+        \ton error errMsg
+        \t\tmy logMessage("Erreur de montage: " & errMsg, "error")
+        \t\treturn false
+        \tend try
+        end mountDMGWithConversion
+
+        -- Fonction pour nettoyer les fichiers temporaires
+        on cleanupTemporaryFiles()
+        \ttry
+        \t\tdo shell script "rm -f /tmp/dmg_converted.dmg"
+        \t\tmy logMessage("Fichiers temporaires nettoyés", "info")
+        \ton error
+        \t\tmy logMessage("Impossible de nettoyer certains fichiers temporaires", "warning")
+        \tend try
+        end cleanupTemporaryFiles
 
         -- Fonction pour trouver le fichier DMG
         on findDMGFile()
-            -- Obtenir le dossier du script
-            set myPath to POSIX path of (path to me)
-            set lastSlash to my lastIndexOf(myPath, "/")
-            if lastSlash is not false then
-                set scriptFolder to text 1 thru lastSlash of myPath
-                
-                -- Essayer dans le sous-dossier DMG
-                set dmgInSubfolder to scriptFolder & "DMG/" & dmgFileName
-                if my fileExists(dmgInSubfolder) then
-                    return dmgInSubfolder
-                end if
-                
-                -- Essayer dans le même dossier que le script
-                set dmgInSameFolder to scriptFolder & dmgFileName
-                if my fileExists(dmgInSameFolder) then
-                    return dmgInSameFolder
-                end if
-            end if
-            
-            -- Demander à l'utilisateur
-            my logMessage("DMG non trouvé automatiquement. Sélection manuelle requise.", "warning")
-            
-            set userPrompt to "Le fichier DMG n'a pas été trouvé automatiquement. Voulez-vous le sélectionner manuellement?"
-            set userChoice to button returned of (display dialog userPrompt buttons {"Annuler", "Sélectionner"} default button "Sélectionner")
-            
-            if userChoice is "Sélectionner" then
-                try
-                    set selectedFile to POSIX path of (choose file with prompt "Sélectionnez le fichier DMG à installer:" of type {"com.apple.disk-image"})
-                    return selectedFile
-                on error
-                    return false
-                end try
-            else
-                return false
-            end if
+        \t-- Obtenir le dossier du script
+        \tset myPath to POSIX path of (path to me)
+        \tset lastSlash to my lastIndexOf(myPath, "/")
+        \tif lastSlash is not false then
+        \t\tset scriptFolder to text 1 thru lastSlash of myPath
+        \t\t\t\t
+        \t\t-- Essayer dans le sous-dossier DMG
+        \t\tset dmgInSubfolder to scriptFolder & "DMG/" & dmgFileName
+        \t\tif my fileExists(dmgInSubfolder) then
+        \t\t\treturn dmgInSubfolder
+        \t\tend if
+        \t\t\t\t
+        \t\t-- Essayer dans le même dossier que le script
+        \t\tset dmgInSameFolder to scriptFolder & dmgFileName
+        \t\tif my fileExists(dmgInSameFolder) then
+        \t\t\treturn dmgInSameFolder
+        \t\tend if
+        \tend if
+        \t\t
+        \t-- Demander à l'utilisateur
+        \tmy logMessage("DMG non trouvé automatiquement. Sélection manuelle requise.", "warning")
+        \t\t
+        \tset userPrompt to "Le fichier DMG n'a pas été trouvé automatiquement. Voulez-vous le sélectionner manuellement?"
+        \tset userChoice to button returned of (display dialog userPrompt buttons {"Annuler", "Sélectionner"} default button "Sélectionner")
+        \t\t
+        \tif userChoice is "Sélectionner" then
+        \t\ttry
+        \t\t\tset selectedFile to POSIX path of (choose file with prompt "Sélectionnez le fichier DMG à installer:" of type {"com.apple.disk-image"})
+        \t\t\treturn selectedFile
+        \t\ton error
+        \t\t\treturn false
+        \t\tend try
+        \telse
+        \t\treturn false
+        \tend if
         end findDMGFile
-        
-        -- Fonction améliorée pour monter le DMG avec repli
+
+        -- Fonction pour monter le DMG (gardée pour compatibilité, mais non utilisée)
         on mountDMG(dmgPath)
-            try
-                -- Essayer d'abord la méthode simple avec agreeToLicense
-                my logMessage("Tentative de montage direct avec acceptation de licence...", "process")
-                do shell script "hdiutil attach " & quoted form of dmgPath & " -nobrowse -noverify -agreeToLicense"
-                
-                -- Vérifier si le volume est monté
-                delay 2
-                set volumePath to "/Volumes/" & mountedVolumeName
-                if my fileExists(volumePath) then
-                    my logMessage("Montage réussi avec la méthode simple", "success")
-                    return true
-                end if
-                
-                -- Si on arrive ici, c'est que le volume n'est pas monté malgré la commande réussie
-                error "Volume non trouvé après montage simple"
-            on error errMsg
-                -- Méthode simple a échoué, passer à la méthode de conversion
-                my logMessage("Montage simple échoué: " & errMsg, "warning")
-                my logMessage("Tentative avec conversion du DMG...", "process")
-                
-                try
-                    -- Nettoyage préventif
-                    do shell script "rm -f /tmp/converted_dmg.dmg"
-                    
-                    -- Convertir et monter
-                    do shell script "hdiutil convert " & quoted form of dmgPath & " -format UDRW -o \"/tmp/converted_dmg\" && hdiutil attach \"/tmp/converted_dmg.dmg\""
-                    
-                    -- Vérifier si le volume est monté
-                    delay 2
-                    set volumePath to "/Volumes/" & mountedVolumeName
-                    if my fileExists(volumePath) then
-                        my logMessage("Montage réussi avec la méthode de conversion", "success")
-                        return true
-                    else
-                        error "Volume non trouvé après conversion et montage"
-                    end if
-                on error conversionErr
-                    my logMessage("Échec de toutes les méthodes de montage: " & conversionErr, "error")
-                    return false
-                end try
-            end try
+        \ttry
+        \t\tdo shell script "hdiutil attach " & quoted form of dmgPath
+        \t\treturn true
+        \ton error errMsg
+        \t\tmy logMessage("Erreur de montage: " & errMsg, "error")
+        \t\treturn false
+        \tend try
         end mountDMG
-        
+
         -- Fonction pour copier l'application
         on copyApp(sourceApp, appsPath)
-            try
-                do shell script "cp -R " & quoted form of sourceApp & " " & quoted form of appsPath
-                return true
-            on error errMsg
-                my logMessage("Erreur de copie: " & errMsg, "error")
-                return false
-            end try
+        \ttry
+        \t\tdo shell script "cp -R " & quoted form of sourceApp & " " & quoted form of appsPath
+        \t\treturn true
+        \ton error errMsg
+        \t\tmy logMessage("Erreur de copie: " & errMsg, "error")
+        \t\treturn false
+        \tend try
         end copyApp
-        
+
         -- Fonction pour créer une copie de sauvegarde du DMG
         on copyDMGToDocuments(dmgPath, documentsPath)
-            try
-                do shell script "cp " & quoted form of dmgPath & " " & quoted form of documentsPath
-                my logMessage("Copie de sauvegarde créée avec succès dans Documents", "success")
-                return true
-            on error errMsg
-                my logMessage("Erreur de sauvegarde: " & errMsg, "warning")
-                return false
-            end try
+        \ttry
+        \t\tdo shell script "cp " & quoted form of dmgPath & " " & quoted form of documentsPath
+        \t\tmy logMessage("Copie de sauvegarde créée avec succès dans Documents", "success")
+        \t\treturn true
+        \ton error errMsg
+        \t\tmy logMessage("Erreur de sauvegarde: " & errMsg, "warning")
+        \t\treturn false
+        \tend try
         end copyDMGToDocuments
-        
+
         -- Fonction pour démonter le volume
         on unmountDMG(volumeName)
-            try
-                do shell script "hdiutil detach '/Volumes/" & volumeName & "' -force"
-                my logMessage("Image disque démontée avec succès", "success")
-                return true
-            on error
-                my logMessage("Impossible de démonter automatiquement l'image disque. Veuillez l'éjecter manuellement.", "warning")
-                return false
-            end try
+        \ttry
+        \t\tdo shell script "hdiutil detach '/Volumes/" & volumeName & "' -force"
+        \t\tmy logMessage("Image disque démontée avec succès", "success")
+        \t\treturn true
+        \ton error
+        \t\tmy logMessage("Impossible de démonter automatiquement l'image disque. Veuillez l'éjecter manuellement.", "warning")
+        \t\treturn false
+        \tend try
         end unmountDMG
-        
-        -- Fonction pour nettoyer les fichiers temporaires
-        on cleanupTemporaryFiles()
-            try
-                do shell script "rm -f /tmp/converted_dmg.dmg"
-                my logMessage("Fichiers temporaires nettoyés", "info")
-            on error
-                -- Ignorer les erreurs de nettoyage
-            end try
-        end cleanupTemporaryFiles
-        
+
         -- Utilitaire pour trouver la dernière occurrence d'un caractère dans une chaîne
         on lastIndexOf(inputString, searchChar)
-            set AppleScript's text item delimiters to searchChar
-            set itemList to text items of inputString
-            if (count of itemList) is 1 then
-                return false -- Le caractère n'existe pas dans la chaîne
-            else
-                set textLength to length of inputString
-                set lastItem to last item of itemList
-                return textLength - (length of lastItem) - (length of searchChar) + 1
-            end if
+        \tset AppleScript's text item delimiters to searchChar
+        \tset itemList to text items of inputString
+        \tif (count of itemList) is 1 then
+        \t\treturn false -- Le caractère n'existe pas dans la chaîne
+        \telse
+        \t\tset textLength to length of inputString
+        \t\tset lastItem to last item of itemList
+        \t\treturn textLength - (length of lastItem) - (length of searchChar) + 1
+        \tend if
         end lastIndexOf
-        
+
         -- Vérifie si un fichier existe
         on fileExists(filePath)
-            try
-                do shell script "test -e " & quoted form of filePath
-                return true
-            on error
-                return false
-            end try
+        \ttry
+        \t\tdo shell script "test -e " & quoted form of filePath
+        \t\treturn true
+        \ton error
+        \t\treturn false
+        \tend try
         end fileExists
 
         -- Fonction pour afficher un log coloré
         on logMessage(message, logType)
-            set prefix to ""
-            if logType is "info" then
-                set prefix to "ℹ️ [INFO] "
-            else if logType is "success" then
-                set prefix to "✅ [SUCCÈS] "
-            else if logType is "warning" then
-                set prefix to "⚠️ [ATTENTION] "
-            else if logType is "error" then
-                set prefix to "❌ [ERREUR] "
-            else if logType is "start" then
-                set prefix to "🚀 [DÉMARRAGE] "
-            else if logType is "process" then
-                set prefix to "⏳ [PROCESSUS] "
-            end if
-            
-            log prefix & message
-            -- Ajouter cette ligne pour imprimer également à stdout
-            do shell script "echo " & quoted form of (prefix & message)
+        \tset prefix to ""
+        \tif logType is "info" then
+        \t\tset prefix to "ℹ️ [INFO] "
+        \telse if logType is "success" then
+        \t\tset prefix to "✅ [SUCCÈS] "
+        \telse if logType is "warning" then
+        \t\tset prefix to "⚠️ [ATTENTION] "
+        \telse if logType is "error" then
+        \t\tset prefix to "❌ [ERREUR] "
+        \telse if logType is "start" then
+        \t\tset prefix to "🚀 [DÉMARRAGE] "
+        \telse if logType is "process" then
+        \t\tset prefix to "⏳ [PROCESSUS] "
+        \tend if
+        \t\t
+        \tlog prefix & message
+        \t-- Ajouter cette ligne pour imprimer également à stdout
+        \tdo shell script "echo " & quoted form of (prefix & message)
         end logMessage
         """
     }
