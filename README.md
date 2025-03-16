@@ -1,4 +1,4 @@
-# 🚀 ScriptLauncher [![Télécharger la dernière version](https://img.shields.io/badge/Télécharger-v1.1-blue.svg?style=for-the-badge&logo=apple)](https://github.com/tigercocotiger/ScriptLauncher/releases/latest)
+# 🚀 ScriptLauncher
 
 ScriptLauncher est une application macOS moderne permettant d'organiser, gérer et exécuter vos scripts AppleScript et .scpt plus facilement. Cette interface élégante vous offre une expérience fluide pour lancer vos automatisations.
 
@@ -10,13 +10,13 @@ ScriptLauncher est une application macOS moderne permettant d'organiser, gérer 
 - **📜 Historique d'exécution** - Conserve l'historique des scripts exécutés (succès/échec)
 - **⭐ Gestion des favoris** - Marquez vos scripts les plus utilisés pour un accès rapide
 - **🔍 Recherche instantanée** - Trouvez rapidement vos scripts par leur nom
-- **🏷️ Système de tags** - Catégorisez vos scripts avec des tags colorés personnalisables
+- **🏷️ Système de tags avancé** - Catégorisez et filtrez vos scripts avec des tags colorés personnalisables
 - **📊 Vue liste et grille** - Choisissez le mode d'affichage qui vous convient
 - **📤 Exécution en temps réel** - Visualisez la sortie de vos scripts pendant leur exécution
 - **⌨️ Raccourcis clavier** - Naviguez et exécutez vos scripts efficacement
 - **📂 Sélection de dossier** - Changez facilement le dossier cible des scripts
 - **💾 Configuration portable** - Vos préférences sont conservées même sur clé USB
-- **📥 Créateur d'installateurs DMG** - Générez facilement des scripts d'installation pour vos DMG
+- **📥 Créateur d'installateurs DMG/PKG** - Générez facilement des scripts d'installation avec support d'installation silencieuse
 
 ## 📋 Prérequis
 
@@ -68,23 +68,27 @@ Vous pouvez sélectionner plusieurs scripts pour les exécuter en même temps :
 3. Utilisez les boutons "Tout sélectionner" ou "Désélectionner tout"
 4. Cliquez sur "Exécuter X scripts" pour lancer tous les scripts sélectionnés
 
-### 🏷️ Gestion des tags
+### 🏷️ Gestion et filtrage par tags
 
-Le système de tags vous permet de catégoriser vos scripts :
+Le système de tags amélioré vous permet de catégoriser et filtrer vos scripts :
 
 1. Cliquez sur l'icône de tag à côté d'un script pour gérer ses tags
 2. Créez de nouveaux tags avec des couleurs personnalisées
 3. Attribuez plusieurs tags à un même script
-4. Visualisez les tags associés directement dans la liste des scripts
+4. Utilisez la barre de filtres par tags pour afficher uniquement les scripts possédant un tag spécifique
+5. Cliquez directement sur les indicateurs de tag dans les listes et grilles pour filtrer rapidement
+6. Les scripts avec le tag sélectionné sont visuellement mis en évidence
 
-### 📥 Créateur d'installateurs DMG
+Les statistiques de chaque tag (nombre de scripts associés) sont affichées directement dans la barre de filtres.
 
-Créez facilement des scripts d'installation pour vos applications DMG :
+### 📥 Créateur d'installateurs DMG/PKG
+
+Créez facilement des scripts d'installation pour vos applications DMG ou packages PKG :
 
 1. Cliquez sur "Créer installateur DMG" ou utilisez `⌘ + ⇧ + N`
 2. Sélectionnez le fichier DMG source
 3. Les informations (nom du volume, chemin de l'application) sont automatiquement extraites
-4. Personnalisez le script selon vos besoins
+4. Pour les packages PKG, l'installation silencieuse est supportée avec authentification automatique
 5. Le script généré utilise des logs colorés avec émojis pour suivre l'avancement
 6. Une fois créé, vous pouvez ajouter des tags au script dans la liste principale
 
@@ -118,6 +122,7 @@ ScriptLauncher/
 ### 🧱 Composants principaux
 
 - **ContentView** - Vue principale qui orchestre l'application
+- **TagFilterControl** - Barre de filtrage par tags avec statistiques
 - **RunningScriptsView** - Affichage des scripts en cours d'exécution
 - **MultiResultSection** - Affichage des résultats d'exécution
 - **FolderSelector** - Sélection du dossier cible des scripts
@@ -125,7 +130,7 @@ ScriptLauncher/
 - **TagsViewModel** - Gestion des tags et de leurs couleurs
 - **MultiselectScriptsList/GridView** - Affichage des scripts avec sélection multiple
 - **RunningScriptsViewModel** - Gestion des scripts en cours avec timer
-- **DMGInstallerCreator** - Génération de scripts d'installation pour DMG
+- **DMGInstallerCreator** - Génération de scripts d'installation pour DMG/PKG
 
 ## 🛠️ Personnalisation
 
@@ -154,6 +159,13 @@ L'application est construite avec SwiftUI et suit une architecture MVVM :
 - 🌐 Support multilingue
 
 ## 📋 Changelog
+
+### Version 1.2 (Mars 2025)
+- 🏷️ Ajout du filtrage par tags avec statistiques et mise en évidence
+- 📦 Support de l'installation silencieuse des packages PKG
+- 🛠️ Amélioration de l'installateur de DMG avec moins de popups
+- 🖼️ Optimisation de l'interface des tags dans les vues liste et grille
+- 🐛 Corrections de bugs et améliorations de performance
 
 ### Version 1.1 (Mars 2025)
 - ✨ Nouveau créateur d'installateurs DMG avec extraction automatique d'informations
