@@ -5,6 +5,7 @@
 //  Created on 05/03/2025.
 //  Updated on 06/03/2025. - Added tags support
 //  Updated on 07/03/2025. - Added tag color backgrounds with sections
+//  Updated on 17/03/2025. - Added tag filtering support
 //
 
 import SwiftUI
@@ -15,12 +16,14 @@ struct MultiselectScriptGridView: View {
     let isDarkMode: Bool
     let showFavoritesOnly: Bool
     let searchText: String
+    let selectedTag: String?  // Nouveau paramètre
     let tagsViewModel: TagsViewModel
     let onToggleSelect: (ScriptFile) -> Void
     let onToggleFavorite: (ScriptFile) -> Void
     let onUpdateTags: (ScriptFile) -> Void
     let onSelectAll: () -> Void
     let onUnselectAll: () -> Void
+    let onTagClick: ((String) -> Void)?  // Nouveau paramètre
     
     // Nombre total de scripts affichés après filtrage
     private var filteredScriptsCount: Int {
@@ -37,7 +40,8 @@ struct MultiselectScriptGridView: View {
             let matchesSearch = searchText.isEmpty ||
                 script.name.localizedCaseInsensitiveContains(searchText)
             let matchesFavorite = !showFavoritesOnly || script.isFavorite
-            return matchesSearch && matchesFavorite
+            let matchesTag = selectedTag == nil || script.tags.contains(selectedTag!)
+            return matchesSearch && matchesFavorite && matchesTag
         }
     }
     
@@ -89,11 +93,23 @@ struct MultiselectScriptGridView: View {
                         .font(.system(size: 40))
                         .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
                     
-                    Text(showFavoritesOnly
-                         ? "Aucun script favori"
-                         : (searchText.isEmpty ? "Aucun script trouvé" : "Aucun résultat pour '\(searchText)'"))
-                        .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
-                        .multilineTextAlignment(.center)
+                    if selectedTag != nil {
+                        Text("Aucun script avec le tag '\(selectedTag!)'")
+                            .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
+                            .multilineTextAlignment(.center)
+                    } else if showFavoritesOnly {
+                        Text("Aucun script favori")
+                            .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
+                            .multilineTextAlignment(.center)
+                    } else if !searchText.isEmpty {
+                        Text("Aucun résultat pour '\(searchText)'")
+                            .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
+                            .multilineTextAlignment(.center)
+                    } else {
+                        Text("Aucun script trouvé")
+                            .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
+                            .multilineTextAlignment(.center)
+                    }
                     
                     Spacer()
                 }
@@ -106,9 +122,11 @@ struct MultiselectScriptGridView: View {
                                 script: script,
                                 isDarkMode: isDarkMode,
                                 tagsViewModel: tagsViewModel,
+                                selectedTag: selectedTag,
                                 onToggleSelect: { onToggleSelect(script) },
                                 onFavorite: { onToggleFavorite(script) },
-                                onUpdateTags: { onUpdateTags($0) }
+                                onUpdateTags: { onUpdateTags($0) },
+                                onTagClick: onTagClick
                             )
                             .frame(width: 160, height: 180)
                         }
@@ -125,9 +143,11 @@ struct MultiselectScriptGridItemView: View {
     let script: ScriptFile
     let isDarkMode: Bool
     let tagsViewModel: TagsViewModel
+    let selectedTag: String? // Nouveau paramètre
     let onToggleSelect: () -> Void
     let onFavorite: () -> Void
     let onUpdateTags: (ScriptFile) -> Void
+    let onTagClick: ((String) -> Void)?  // Nouveau paramètre
     
     @State private var scriptIcon: NSImage? = nil
     @State private var hasLoadedIcon: Bool = false
@@ -149,6 +169,13 @@ struct MultiselectScriptGridItemView: View {
             return [DesignSystem.accentColor(for: isDarkMode).opacity(0.2)]
         }
         
+        // Si un tag est sélectionné et que le script a ce tag, mettre en évidence ce tag
+        if let tagName = selectedTag, script.tags.contains(tagName),
+           let tag = tagsViewModel.getTag(name: tagName) {
+            // Utiliser la couleur du tag sélectionné avec une opacité plus élevée
+            return [tag.color.opacity(0.3)]
+        }
+        
         // Récupérer les couleurs des tags associés au script
         let colors = script.tags.compactMap { tagName in
             tagsViewModel.getTag(name: tagName)?.color
@@ -161,6 +188,25 @@ struct MultiselectScriptGridItemView: View {
         
         // Appliquer l'opacité aux couleurs
         return colors.map { $0.opacity(isDarkMode ? 0.3 : 0.2) }
+    }
+    
+    // Détermine si le script doit avoir une bordure spéciale pour le tag sélectionné
+    private var shouldHighlightBorder: Bool {
+        if let tagName = selectedTag, script.tags.contains(tagName) {
+            return true
+        }
+        return false
+    }
+    
+    // Couleur de la bordure pour la mise en évidence du tag
+    private var borderColor: Color {
+        if let tagName = selectedTag, script.tags.contains(tagName),
+           let tag = tagsViewModel.getTag(name: tagName) {
+            return tag.color.opacity(0.8)
+        }
+        return script.isSelected
+            ? DesignSystem.accentColor(for: isDarkMode).opacity(0.5)
+            : Color.gray.opacity(0.2)
     }
     
     // Vue personnalisée pour le fond divisé par couleurs de tags
@@ -277,7 +323,11 @@ struct MultiselectScriptGridItemView: View {
             // Tags visuels sous le nom
             if !script.tags.isEmpty {
                 HStack(spacing: 4) {
-                    ScriptTagsDisplay(tags: script.tags, tagsViewModel: tagsViewModel)
+                    ScriptTagsDisplay(
+                        tags: script.tags,
+                        tagsViewModel: tagsViewModel,
+                        onTagClick: onTagClick
+                    )
                 }
                 .frame(height: 12)
                 .padding(.bottom, 4)
@@ -309,10 +359,8 @@ struct MultiselectScriptGridItemView: View {
                 .overlay(
                     RoundedRectangle(cornerRadius: DesignSystem.smallCornerRadius)
                         .stroke(
-                            script.isSelected
-                                ? DesignSystem.accentColor(for: isDarkMode).opacity(0.5)
-                                : Color.gray.opacity(0.2),
-                            lineWidth: 1
+                            borderColor,
+                            lineWidth: shouldHighlightBorder ? 2 : 1
                         )
                 )
         )
@@ -320,19 +368,6 @@ struct MultiselectScriptGridItemView: View {
         .onTapGesture(perform: onToggleSelect)
         .onAppear {
             loadScriptIcon()
-        }
-    }
-    
-    // Fonction pour charger l'icône du script
-    private func loadScriptIcon() {
-        DispatchQueue.global(qos: .userInitiated).async {
-            let workspace = NSWorkspace.shared
-            let icon = workspace.icon(forFile: script.path)
-            
-            DispatchQueue.main.async {
-                self.scriptIcon = icon
-                self.hasLoadedIcon = true
-            }
         }
     }
     
@@ -350,6 +385,19 @@ struct MultiselectScriptGridItemView: View {
             return "il y a \(minute)m"
         } else {
             return "à l'instant"
+        }
+    }
+    
+    // Fonction pour charger l'icône du script
+    private func loadScriptIcon() {
+        DispatchQueue.global(qos: .userInitiated).async {
+            let workspace = NSWorkspace.shared
+            let icon = workspace.icon(forFile: script.path)
+            
+            DispatchQueue.main.async {
+                self.scriptIcon = icon
+                self.hasLoadedIcon = true
+            }
         }
     }
 }
@@ -402,12 +450,14 @@ struct TagSectionShape: Shape {
         isDarkMode: false,
         showFavoritesOnly: false,
         searchText: "",
+        selectedTag: nil,
         tagsViewModel: tagsViewModel,
         onToggleSelect: { _ in },
         onToggleFavorite: { _ in },
         onUpdateTags: { _ in },
         onSelectAll: {},
-        onUnselectAll: {}
+        onUnselectAll: {},
+        onTagClick: { _ in }
     )
     .frame(width: 600, height: 400)
     .background(Color.white)
@@ -431,12 +481,14 @@ struct TagSectionShape: Shape {
         isDarkMode: true,
         showFavoritesOnly: false,
         searchText: "",
+        selectedTag: "Important",
         tagsViewModel: tagsViewModel,
         onToggleSelect: { _ in },
         onToggleFavorite: { _ in },
         onUpdateTags: { _ in },
         onSelectAll: {},
-        onUnselectAll: {}
+        onUnselectAll: {},
+        onTagClick: { _ in }
     )
     .frame(width: 600, height: 400)
     .background(Color.black)

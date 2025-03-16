@@ -53,18 +53,25 @@ struct TagConfig: Codable {
 struct ScriptTagsDisplay: View {
     let tags: Set<String>
     let tagsViewModel: TagsViewModel
+    var onTagClick: ((String) -> Void)? = nil  // Callback optionnel pour le clic sur un tag
     
     // Identifiant de la vue pour forcer la mise à jour
     @State private var viewID = UUID()
     
     var body: some View {
         if !tags.isEmpty {
-            HStack(spacing: 2) {
-                ForEach(Array(tags).prefix(3), id: \.self) { tagName in
+            HStack(spacing: 4) {
+                ForEach(Array(tags).prefix(3).sorted(), id: \.self) { tagName in
                     if let tag = tagsViewModel.getTag(name: tagName) {
                         Circle()
                             .fill(tag.color)
                             .frame(width: 6, height: 6)
+                            .contentShape(Rectangle())  // Pour rendre la zone cliquable plus grande
+                            .onTapGesture {
+                                if let onTagClick = onTagClick {
+                                    onTagClick(tagName)
+                                }
+                            }
                     }
                 }
                 

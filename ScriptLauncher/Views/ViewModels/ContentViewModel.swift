@@ -5,6 +5,7 @@
 //  Created by MacBook-16/M1P-001 on 10/03/2025.
 //  Updated on 10/03/2025. - Added support for USB root relative paths
 //  Updated on 14/03/2025. - Fixed log display issues and method organization
+//  Updated on 17/03/2025. - Added tag filtering support
 //
 
 import SwiftUI
@@ -21,6 +22,9 @@ class ContentViewModel: ObservableObject {
     @Published var isDarkMode: Bool = false
     @Published var isGridView: Bool = false
     @Published var targetFolderPath: String = ConfigManager.shared.folderPath
+    
+    // Tag filtering
+    @Published var selectedTag: String? = nil
     
     // Animation
     @Published var showGlobalFirework: Bool = false
@@ -48,7 +52,12 @@ class ContentViewModel: ObservableObject {
     
     // MARK: - Computed Properties
     var selectedScriptsCount: Int {
-        scripts.filter { $0.isSelected }.count
+        scripts.filter { script in
+            let matchesSearch = searchText.isEmpty || script.name.localizedCaseInsensitiveContains(searchText)
+            let matchesFavorite = !showFavoritesOnly || script.isFavorite
+            let matchesTag = selectedTag == nil || script.tags.contains(selectedTag!)
+            return matchesSearch && matchesFavorite && matchesTag && script.isSelected
+        }.count
     }
     
     // MARK: - Initialization
@@ -122,7 +131,8 @@ class ContentViewModel: ObservableObject {
         let filtered = scripts.filter { script in
             let matchesSearch = searchText.isEmpty || script.name.localizedCaseInsensitiveContains(searchText)
             let matchesFavorite = !showFavoritesOnly || script.isFavorite
-            return matchesSearch && matchesFavorite
+            let matchesTag = selectedTag == nil || script.tags.contains(selectedTag!)
+            return matchesSearch && matchesFavorite && matchesTag
         }
         
         for index in 0..<scripts.count {
@@ -150,6 +160,30 @@ class ContentViewModel: ObservableObject {
                 selectedScript = scripts.first(where: { $0.isSelected })
             }
         }
+    }
+    
+    // Méthode pour filtrer les scripts (pour MultiselectScriptsList et MultiselectScriptGridView)
+    func filteredScripts() -> [ScriptFile] {
+        return scripts.filter { script in
+            let matchesSearch = searchText.isEmpty || script.name.localizedCaseInsensitiveContains(searchText)
+            let matchesFavorite = !showFavoritesOnly || script.isFavorite
+            let matchesTag = selectedTag == nil || script.tags.contains(selectedTag!)
+            return matchesSearch && matchesFavorite && matchesTag
+        }
+    }
+    
+    // Méthode pour filtrer par un tag lors d'un clic sur un tag
+    func filterByTag(_ tagName: String) {
+        // Si le tag est déjà sélectionné, le désélectionner
+        if selectedTag == tagName {
+            selectedTag = nil
+        } else {
+            // Sinon, sélectionner ce tag
+            selectedTag = tagName
+        }
+        
+        // Forcer le rafraîchissement des vues
+        viewRefreshID = UUID()
     }
     
     // MARK: - Tag Management

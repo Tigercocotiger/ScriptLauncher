@@ -4,6 +4,7 @@
 //
 //  Created by MacBook-16/M1P-001 on 05/03/2025.
 //  Updated on 06/03/2025. - Added tags support
+//  Updated on 17/03/2025. - Added tag filtering support
 //
 
 import SwiftUI
@@ -13,12 +14,14 @@ struct MultiselectScriptsList: View {
     let isDarkMode: Bool
     let showFavoritesOnly: Bool
     let searchText: String
+    let selectedTag: String?  // Nouveau paramètre
     let tagsViewModel: TagsViewModel
     let onToggleSelect: (ScriptFile) -> Void
     let onToggleFavorite: (ScriptFile) -> Void
     let onUpdateTags: (ScriptFile) -> Void
     let onSelectAll: () -> Void
     let onUnselectAll: () -> Void
+    let onTagClick: ((String) -> Void)?  // Nouveau paramètre
     
     // Nombre total de scripts affichés après filtrage
     private var filteredScriptsCount: Int {
@@ -35,7 +38,8 @@ struct MultiselectScriptsList: View {
             let matchesSearch = searchText.isEmpty ||
                 script.name.localizedCaseInsensitiveContains(searchText)
             let matchesFavorite = !showFavoritesOnly || script.isFavorite
-            return matchesSearch && matchesFavorite
+            let matchesTag = selectedTag == nil || script.tags.contains(selectedTag!)
+            return matchesSearch && matchesFavorite && matchesTag
         }
     }
     
@@ -80,9 +84,11 @@ struct MultiselectScriptsList: View {
                             script: script,
                             isDarkMode: isDarkMode,
                             tagsViewModel: tagsViewModel,
+                            selectedTag: selectedTag,
                             onToggleSelect: { onToggleSelect(script) },
                             onFavorite: { onToggleFavorite(script) },
-                            onUpdateTags: { onUpdateTags($0) }
+                            onUpdateTags: { onUpdateTags($0) },
+                            onTagClick: onTagClick
                         )
                         .padding(.horizontal, DesignSystem.spacing)
                         .padding(.vertical, 4)
@@ -104,10 +110,19 @@ struct MultiselectScriptsList: View {
                                 .font(.system(size: 40))
                                 .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
                             
-                            Text(showFavoritesOnly
-                                 ? "Aucun script favori"
-                                 : (searchText.isEmpty ? "Aucun script trouvé" : "Aucun résultat pour '\(searchText)'"))
-                                .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
+                            if selectedTag != nil {
+                                Text("Aucun script avec le tag '\(selectedTag!)'")
+                                    .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
+                            } else if showFavoritesOnly {
+                                Text("Aucun script favori")
+                                    .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
+                            } else if !searchText.isEmpty {
+                                Text("Aucun résultat pour '\(searchText)'")
+                                    .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
+                            } else {
+                                Text("Aucun script trouvé")
+                                    .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
+                            }
                         }
                     }
                 }
@@ -131,12 +146,14 @@ struct MultiselectScriptsList: View {
         isDarkMode: false,
         showFavoritesOnly: false,
         searchText: "",
+        selectedTag: nil,
         tagsViewModel: tagsViewModel,
         onToggleSelect: { _ in },
         onToggleFavorite: { _ in },
         onUpdateTags: { _ in },
         onSelectAll: {},
-        onUnselectAll: {}
+        onUnselectAll: {},
+        onTagClick: { _ in }
     )
     .frame(width: 400, height: 300)
     .background(Color.white)
@@ -150,12 +167,14 @@ struct MultiselectScriptsList: View {
         isDarkMode: true,
         showFavoritesOnly: false,
         searchText: "introuvable",
+        selectedTag: nil,
         tagsViewModel: tagsViewModel,
         onToggleSelect: { _ in },
         onToggleFavorite: { _ in },
         onUpdateTags: { _ in },
         onSelectAll: {},
-        onUnselectAll: {}
+        onUnselectAll: {},
+        onTagClick: { _ in }
     )
     .frame(width: 400, height: 300)
     .background(Color.black)

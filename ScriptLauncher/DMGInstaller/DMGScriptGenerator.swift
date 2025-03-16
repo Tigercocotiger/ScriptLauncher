@@ -446,26 +446,23 @@ class DMGScriptGenerator {
         \tend if
         end findDMGFile
         
-        -- Fonction pour installer le package
+        -- Fonction pour installer le package avec mot de passe prédéfini
         on installPackage(packagePath)
-        \ttry
-        \t\t-- Demander le mot de passe d'administrateur pour installer le package
-        \t\tmy logMessage("Demande des droits administrateur pour installer le package...", "process")
-        \t\t
-        \t\t-- Utiliser la commande installer avec sudo
-        \t\ttell application "System Events"
-        \t\t\tset adminPassword to text returned of (display dialog "Veuillez entrer votre mot de passe administrateur pour installer le package:" default answer "" with hidden answer buttons {"Annuler", "OK"} default button "OK" with icon caution)
-        \t\tend tell
-        \t\t
-        \t\t-- Exécuter la commande d'installation avec le mot de passe fourni
-        \t\tdo shell script "installer -pkg " & quoted form of packagePath & " -target /" password adminPassword with administrator privileges
-        \t\t
-        \t\tmy logMessage("Package installé avec succès", "success")
-        \t\treturn true
-        \ton error errMsg
-        \t\tmy logMessage("Erreur lors de l'installation du package: " & errMsg, "error")
-        \t\treturn false
-        \tend try
+            try
+                -- Définir le mot de passe administrateur directement dans le script
+                set adminPassword to "    " -- Mot de passe composé de 4 espaces
+                
+                my logMessage("Installation du package...", "process")
+                
+                -- Exécuter la commande d'installation avec le mot de passe fourni
+                do shell script "installer -pkg " & quoted form of packagePath & " -target /" password adminPassword with administrator privileges
+                
+                my logMessage("Package installé avec succès", "success")
+                return true
+            on error errMsg
+                my logMessage("Erreur lors de l'installation du package: " & errMsg, "error")
+                return false
+            end try
         end installPackage
         
         -- Fonction pour créer une copie de sauvegarde du DMG

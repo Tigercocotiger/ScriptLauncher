@@ -4,6 +4,7 @@
 //
 //  Created on 05/03/2025.
 //  Updated on 06/03/2025. - Added tags support
+//  Updated on 17/03/2025. - Added tag filtering support
 //
 
 import SwiftUI
@@ -14,9 +15,11 @@ struct MultiselectScriptRowView: View {
     let script: ScriptFile
     let isDarkMode: Bool
     let tagsViewModel: TagsViewModel
+    let selectedTag: String? // Nouveau paramètre
     let onToggleSelect: () -> Void
     let onFavorite: () -> Void
     let onUpdateTags: (ScriptFile) -> Void
+    let onTagClick: ((String) -> Void)? // Nouveau paramètre
     
     @State private var scriptIcon: NSImage? = nil
     @State private var hasLoadedIcon: Bool = false
@@ -29,6 +32,23 @@ struct MultiselectScriptRowView: View {
             return String(name[..<dotIndex])
         }
         return name
+    }
+    
+    // Propriété calculée pour déterminer la couleur de fond
+    private var rowBackground: some View {
+        Group {
+            if script.isSelected {
+                // Si le script est sélectionné, utiliser la couleur d'accent
+                DesignSystem.accentColor(for: isDarkMode).opacity(isDarkMode ? 0.3 : 0.1)
+            } else if let tagName = selectedTag, script.tags.contains(tagName),
+                      let tag = tagsViewModel.getTag(name: tagName) {
+                // Si un tag est sélectionné et que le script a ce tag, utiliser la couleur du tag
+                tag.color.opacity(isDarkMode ? 0.15 : 0.1)
+            } else {
+                // Sinon, fond transparent
+                Color.clear
+            }
+        }
     }
     
     var body: some View {
@@ -75,7 +95,11 @@ struct MultiselectScriptRowView: View {
                 .lineLimit(1)
             
             // Affichage des tags
-            ScriptTagsDisplay(tags: script.tags, tagsViewModel: tagsViewModel)
+            ScriptTagsDisplay(
+                tags: script.tags,
+                tagsViewModel: tagsViewModel,
+                onTagClick: onTagClick
+            )
             
             Spacer()
             
@@ -120,13 +144,7 @@ struct MultiselectScriptRowView: View {
         .padding(.vertical, 6)
         .contentShape(Rectangle())
         .onTapGesture(perform: onToggleSelect)
-        .background(
-            script.isSelected
-                ? (isDarkMode
-                    ? DesignSystem.accentColor(for: isDarkMode).opacity(0.3)
-                    : DesignSystem.accentColor(for: isDarkMode).opacity(0.1))
-                : Color.clear
-        )
+        .background(rowBackground) // Utiliser la nouvelle propriété calculée
         .onAppear {
             loadScriptIcon()
         }
@@ -185,9 +203,11 @@ struct MultiselectScriptRowView: View {
             script: script,
             isDarkMode: false,
             tagsViewModel: tagsViewModel,
+            selectedTag: nil,
             onToggleSelect: {},
             onFavorite: {},
-            onUpdateTags: { _ in }
+            onUpdateTags: { _ in },
+            onTagClick: { _ in }
         )
         .padding(.horizontal)
         .background(Color.white)
@@ -204,9 +224,11 @@ struct MultiselectScriptRowView: View {
             ),
             isDarkMode: false,
             tagsViewModel: tagsViewModel,
+            selectedTag: nil,
             onToggleSelect: {},
             onFavorite: {},
-            onUpdateTags: { _ in }
+            onUpdateTags: { _ in },
+            onTagClick: { _ in }
         )
         .padding(.horizontal)
         
@@ -222,14 +244,36 @@ struct MultiselectScriptRowView: View {
             ),
             isDarkMode: false,
             tagsViewModel: tagsViewModel,
+            selectedTag: nil,
             onToggleSelect: {},
             onFavorite: {},
-            onUpdateTags: { _ in }
+            onUpdateTags: { _ in },
+            onTagClick: { _ in }
+        )
+        .padding(.horizontal)
+        
+        // Script avec tag sélectionné
+        MultiselectScriptRowView(
+            script: ScriptFile(
+                name: "tagged_script.scpt",
+                path: "/System/Applications/Utilities/Console.app",
+                isFavorite: false,
+                lastExecuted: Date(),
+                isSelected: false,
+                tags: ["Important"]
+            ),
+            isDarkMode: false,
+            tagsViewModel: tagsViewModel,
+            selectedTag: "Important",
+            onToggleSelect: {},
+            onFavorite: {},
+            onUpdateTags: { _ in },
+            onTagClick: { _ in }
         )
         .padding(.horizontal)
     }
     .padding()
-    .frame(width: 400, height: 150)
+    .frame(width: 400, height: 200)
 }
 
 #Preview("MultiselectScriptRowView - Mode sombre") {
@@ -248,9 +292,11 @@ struct MultiselectScriptRowView: View {
             ),
             isDarkMode: true,
             tagsViewModel: tagsViewModel,
+            selectedTag: "Important",
             onToggleSelect: {},
             onFavorite: {},
-            onUpdateTags: { _ in }
+            onUpdateTags: { _ in },
+            onTagClick: { _ in }
         )
         .padding(.horizontal)
         .background(Color.black)
