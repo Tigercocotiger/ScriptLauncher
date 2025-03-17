@@ -451,7 +451,10 @@ class ContentViewModel: ObservableObject {
             )
         }
     }
-    
+    // MARK: - Configuration Management
+    func cleanupConfig() {
+        PathCleanupTool.cleanupConfigFile()
+    }
     // MARK: - Special Scripts
     func launchConfiguratorScript() {
         let folderPath = resolvePathIfNeeded(targetFolderPath)
@@ -584,6 +587,15 @@ class ContentViewModel: ObservableObject {
             
             print("ContentViewModel - Scripts et tags rechargés suite à notification RefreshScriptsList")
         }
+        
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("CleanupConfig"),
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.cleanupConfig()
+        }
+        
         
         // Nouvel observateur pour réparer les chemins
         NotificationCenter.default.addObserver(

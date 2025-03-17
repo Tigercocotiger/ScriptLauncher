@@ -2,6 +2,14 @@
 //  PathCleanupTool.swift
 //  ScriptLauncher
 //
+//  Created by MacBook14M3P-005 on 17/03/2025.
+//
+
+
+//
+//  PathCleanupTool.swift
+//  ScriptLauncher
+//
 //  Utilitaire pour nettoyer le fichier de configuration
 //  Créé le 25/03/2025
 //
@@ -35,7 +43,7 @@ class PathCleanupTool {
             var json = try JSONSerialization.jsonObject(with: data, options: []) as! [String: Any]
             
             // Vérifier si scriptTags est présent
-            if var scriptTags = json["scriptTags"] as? [String: Any] {
+            if let scriptTags = json["scriptTags"] as? [String: Any] {
                 var updatedScriptTags: [String: Any] = [:]
                 
                 // Pour chaque chemin, extraire juste le nom du fichier

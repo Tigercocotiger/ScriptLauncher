@@ -4,6 +4,7 @@
 //
 //  Created on 15/03/2025.
 //  Updated on 16/03/2025. - Added PKG installation support
+//  Updated on 25/03/2025. - Fixed simultaneous DMG mounting conflict
 //
 
 import Foundation
@@ -64,6 +65,7 @@ class DMGScriptGenerator {
         property mountedVolumeName : "\(params.volumeName)"
         property applicationPath : "\(params.targetPath)"
         property dmgFileName : "\(params.dmgFileName)"
+        property tempConvertedDMG : ""
         
         -- Exécution principale du script
         on run
@@ -127,17 +129,24 @@ class DMGScriptGenerator {
         -- Fonction pour monter le DMG avec conversion pour éviter la licence
         on mountDMGWithConversion(dmgPath)
         \ttry
-        \t\t-- Convertir et monter le DMG en une seule étape
+        \t\t-- Créer un nom de fichier temporaire unique basé sur le nom du volume
+        \t\tset randomID to do shell script "date +%s"
+        \t\tset tempFileName to "/tmp/dmg_converted_" & mountedVolumeName & "_" & randomID
+        \t\t
+        \t\t-- Convertir et monter le DMG en une seule étape avec un nom unique
         \t\tmy logMessage("Conversion du DMG pour contourner la licence...", "process")
-        \t\tdo shell script "rm -f /tmp/dmg_converted.dmg && hdiutil convert " & quoted form of dmgPath & " -format UDRW -o \\"/tmp/dmg_converted\\" && hdiutil attach \\"/tmp/dmg_converted.dmg\\""
-        \t\t\t\t
+        \t\tdo shell script "rm -f " & quoted form of (tempFileName & ".dmg") & " && hdiutil convert " & quoted form of dmgPath & " -format UDRW -o " & quoted form of tempFileName & " && hdiutil attach " & quoted form of (tempFileName & ".dmg")
+        \t\t
+        \t\t-- Stocker le nom du fichier temporaire pour pouvoir le nettoyer plus tard
+        \t\tset my tempConvertedDMG to tempFileName & ".dmg"
+        \t\t
         \t\t-- Attendre un peu que le système monte le volume
         \t\tdelay 2
-        \t\t\t\t
+        \t\t
         \t\t-- Vérifier si le volume est monté
         \t\tset volumePath to "/Volumes/" & mountedVolumeName
         \t\tset isVolumeMounted to my fileExists(volumePath)
-        \t\t\t\t
+        \t\t
         \t\tif isVolumeMounted then
         \t\t\tmy logMessage("Volume monté avec succès à " & volumePath, "success")
         \t\t\treturn true
@@ -153,8 +162,15 @@ class DMGScriptGenerator {
         -- Fonction pour nettoyer les fichiers temporaires
         on cleanupTemporaryFiles()
         \ttry
-        \t\tdo shell script "rm -f /tmp/dmg_converted.dmg"
-        \t\tmy logMessage("Fichiers temporaires nettoyés", "info")
+        \t\t-- Si nous avons un fichier temporaire spécifique, le nettoyer
+        \t\tif tempConvertedDMG is not "" then
+        \t\t\tdo shell script "rm -f " & quoted form of tempConvertedDMG
+        \t\t\tmy logMessage("Fichier temporaire nettoyé: " & tempConvertedDMG, "info")
+        \t\telse
+        \t\t\t-- Nettoyer les anciens fichiers temporaires qui pourraient traîner
+        \t\t\tdo shell script "rm -f /tmp/dmg_converted*.dmg"
+        \t\t\tmy logMessage("Fichiers temporaires nettoyés", "info")
+        \t\tend if
         \ton error
         \t\tmy logMessage("Impossible de nettoyer certains fichiers temporaires", "warning")
         \tend try
@@ -313,6 +329,7 @@ class DMGScriptGenerator {
         property mountedVolumeName : "\(params.volumeName)"
         property packagePath : "\(params.targetPath)"
         property dmgFileName : "\(params.dmgFileName)"
+        property tempConvertedDMG : ""
         
         -- Exécution principale du script
         on run
@@ -374,17 +391,24 @@ class DMGScriptGenerator {
         -- Fonction pour monter le DMG avec conversion pour éviter la licence
         on mountDMGWithConversion(dmgPath)
         \ttry
-        \t\t-- Convertir et monter le DMG en une seule étape
+        \t\t-- Créer un nom de fichier temporaire unique basé sur le nom du volume
+        \t\tset randomID to do shell script "date +%s"
+        \t\tset tempFileName to "/tmp/dmg_converted_" & mountedVolumeName & "_" & randomID
+        \t\t
+        \t\t-- Convertir et monter le DMG en une seule étape avec un nom unique
         \t\tmy logMessage("Conversion du DMG pour contourner la licence...", "process")
-        \t\tdo shell script "rm -f /tmp/dmg_converted.dmg && hdiutil convert " & quoted form of dmgPath & " -format UDRW -o \\"/tmp/dmg_converted\\" && hdiutil attach \\"/tmp/dmg_converted.dmg\\""
-        \t\t\t\t
+        \t\tdo shell script "rm -f " & quoted form of (tempFileName & ".dmg") & " && hdiutil convert " & quoted form of dmgPath & " -format UDRW -o " & quoted form of tempFileName & " && hdiutil attach " & quoted form of (tempFileName & ".dmg")
+        \t\t
+        \t\t-- Stocker le nom du fichier temporaire pour pouvoir le nettoyer plus tard
+        \t\tset my tempConvertedDMG to tempFileName & ".dmg"
+        \t\t
         \t\t-- Attendre un peu que le système monte le volume
         \t\tdelay 2
-        \t\t\t\t
+        \t\t
         \t\t-- Vérifier si le volume est monté
         \t\tset volumePath to "/Volumes/" & mountedVolumeName
         \t\tset isVolumeMounted to my fileExists(volumePath)
-        \t\t\t\t
+        \t\t
         \t\tif isVolumeMounted then
         \t\t\tmy logMessage("Volume monté avec succès à " & volumePath, "success")
         \t\t\treturn true
@@ -400,8 +424,15 @@ class DMGScriptGenerator {
         -- Fonction pour nettoyer les fichiers temporaires
         on cleanupTemporaryFiles()
         \ttry
-        \t\tdo shell script "rm -f /tmp/dmg_converted.dmg"
-        \t\tmy logMessage("Fichiers temporaires nettoyés", "info")
+        \t\t-- Si nous avons un fichier temporaire spécifique, le nettoyer
+        \t\tif tempConvertedDMG is not "" then
+        \t\t\tdo shell script "rm -f " & quoted form of tempConvertedDMG
+        \t\t\tmy logMessage("Fichier temporaire nettoyé: " & tempConvertedDMG, "info")
+        \t\telse
+        \t\t\t-- Nettoyer les anciens fichiers temporaires qui pourraient traîner
+        \t\t\tdo shell script "rm -f /tmp/dmg_converted*.dmg"
+        \t\t\tmy logMessage("Fichiers temporaires nettoyés", "info")
+        \t\tend if
         \ton error
         \t\tmy logMessage("Impossible de nettoyer certains fichiers temporaires", "warning")
         \tend try

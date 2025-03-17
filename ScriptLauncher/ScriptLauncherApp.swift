@@ -123,6 +123,25 @@ struct ScriptLauncherApp: App {
                        .keyboardShortcut("n", modifiers: [.command, .shift])
                    }
                    
+                   CommandMenu("Outils") {
+                       Button("Nettoyer la configuration") {
+                           NotificationCenter.default.post(
+                               name: NSNotification.Name("CleanupConfig"),
+                               object: nil
+                           )
+                       }
+                       .keyboardShortcut("c", modifiers: [.command, .shift])
+                       
+                       Divider()
+                       
+                       Button("Réparer les chemins") {
+                           NotificationCenter.default.post(
+                               name: NSNotification.Name("RepairPaths"),
+                               object: nil
+                           )
+                       }
+                       .keyboardShortcut("r", modifiers: [.command, .shift])
+                   }
                    // Ajouter un menu spécifique pour la gestion des clés USB
                    CommandMenu("Clés USB") {
                        Button("Réparer les chemins") {

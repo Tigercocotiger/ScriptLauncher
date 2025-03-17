@@ -6,6 +6,7 @@
 //  Updated on 06/03/2025. - Added tags support
 //  Updated on 10/03/2025. - Added root USB drive resources lookup
 //  Updated on 13/03/2025. - Added support for scripts in Resources folder
+//  Updated on 25/03/2025. - Added method to get config file path
 //
 
 import Foundation
@@ -63,6 +64,11 @@ class ConfigManager {
         
         // Retourner le chemin complet vers le fichier de configuration
         return resourcesDir.appendingPathComponent("ScriptLauncher_config.json")
+    }
+    
+    // Méthode publique pour obtenir le chemin du fichier de configuration
+    func getConfigFilePath() -> URL {
+        return configFilePath
     }
     
     init() {

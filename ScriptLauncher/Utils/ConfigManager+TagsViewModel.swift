@@ -1,15 +1,9 @@
 //
-//  Untitled.swift
-//  ScriptLauncher
-//
-//  Created by MacBook-16/M1P-001 on 10/03/2025.
-//
-
-//
 //  ConfigManager+TagsViewModel.swift
 //  ScriptLauncher
 //
 //  Created on 10/03/2025.
+//  Updated on 25/03/2025. - Fixed path handling
 //
 
 import SwiftUI

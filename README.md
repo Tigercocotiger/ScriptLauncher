@@ -17,6 +17,8 @@ ScriptLauncher est une application macOS moderne permettant d'organiser, gérer 
 - **📂 Sélection de dossier** - Changez facilement le dossier cible des scripts
 - **💾 Configuration portable** - Vos préférences sont conservées même sur clé USB
 - **📥 Créateur d'installateurs DMG/PKG** - Générez facilement des scripts d'installation avec support d'installation silencieuse
+- **🔄 Exécution simultanée** - Lancez plusieurs installateurs DMG en même temps sans conflit
+- **🧹 Nettoyeur de configuration** - Simplifiez les chemins de fichiers pour une meilleure portabilité
 
 ## 📋 Prérequis
 
@@ -57,6 +59,7 @@ Pour changer le dossier cible des scripts :
 - `⌘ + I` : Afficher/masquer l'aide
 - `⌘ + .` : Arrêter tous les scripts en cours
 - `⌘ + ⇧ + N` : Créer un installateur DMG
+- `⌘ + ⇧ + C` : Nettoyer la configuration des chemins
 - `Échap` : Annuler la recherche
 
 ### 📋 Sélection multiple
@@ -91,6 +94,17 @@ Créez facilement des scripts d'installation pour vos applications DMG ou packag
 4. Pour les packages PKG, l'installation silencieuse est supportée avec authentification automatique
 5. Le script généré utilise des logs colorés avec émojis pour suivre l'avancement
 6. Une fois créé, vous pouvez ajouter des tags au script dans la liste principale
+
+Les installateurs DMG peuvent maintenant être exécutés simultanément grâce à l'utilisation de fichiers temporaires uniques.
+
+### 🧹 Nettoyage de la configuration
+
+Pour assurer la portabilité de vos scripts et tags:
+
+1. Utilisez l'option "Nettoyer la configuration" dans le menu Outils (ou appuyez sur `⌘ + ⇧ + C`)
+2. Cette fonction simplifie les chemins absolus dans votre configuration
+3. Les références aux scripts utilisent désormais uniquement les noms de fichiers
+4. Vos tags fonctionneront correctement même en déplaçant l'application sur une autre machine
 
 ### 📊 Gestion de l'historique
 
@@ -131,6 +145,7 @@ ScriptLauncher/
 - **MultiselectScriptsList/GridView** - Affichage des scripts avec sélection multiple
 - **RunningScriptsViewModel** - Gestion des scripts en cours avec timer
 - **DMGInstallerCreator** - Génération de scripts d'installation pour DMG/PKG
+- **PathCleanupTool** - Nettoyage des chemins dans la configuration
 
 ## 🛠️ Personnalisation
 
@@ -167,6 +182,12 @@ L'application est construite avec SwiftUI et suit une architecture MVVM :
 - 🌐 Support multilingue
 
 ## 📋 Changelog
+
+### Version 1.3 (Mars 2025)
+- 🔄 Correction du problème d'exécution simultanée de scripts DMG
+- 🧹 Ajout de l'outil de nettoyage de configuration pour améliorer la portabilité
+- 🏷️ Améliorations de la gestion des tags avec chemins relatifs
+- 🐛 Corrections de bugs et optimisations de performance
 
 ### Version 1.2 (Mars 2025)
 - 🏷️ Ajout du filtrage par tags avec statistiques et mise en évidence

@@ -30,6 +30,32 @@ class TagsViewModel: ObservableObject {
         
         // Chargement des associations script-tags
         scriptTags = configManager.scriptTags
+        
+        // Nettoyer les chemins absolus pour les transformer en chemins simples ou relatifs
+        cleanupScriptPaths()
+    }
+    
+    // Nouvelle méthode pour nettoyer les chemins absolus
+    private func cleanupScriptPaths() {
+        var updatedScriptTags: [String: Set<String>] = [:]
+        
+        // Pour chaque chemin absolu, extraire juste le nom du fichier
+        for (path, tagSet) in scriptTags {
+            // Obtenez juste le nom du fichier à partir du chemin complet
+            let lastPathComponent = URL(fileURLWithPath: path).lastPathComponent
+            
+            // Convertir en chemin relatif si possible
+            let simplifiedPath = configManager.convertToRelativePath(path) ?? lastPathComponent
+            
+            // Stockez les tags avec le chemin simplifié
+            updatedScriptTags[simplifiedPath] = tagSet
+        }
+        
+        // Remplacer les anciens chemins par les nouveaux
+        scriptTags = updatedScriptTags
+        
+        // Sauvegarder les changements
+        configManager.scriptTags = scriptTags
     }
     
     // Sauvegarde l'état actuel des tags comme sauvegarde
@@ -107,14 +133,22 @@ class TagsViewModel: ObservableObject {
     }
     
     func getTagsForScript(path: String) -> Set<String> {
-        // Vérifier le chemin absolu et le chemin relatif
+        // Obtenir juste le nom du fichier à partir du chemin
+        let fileName = URL(fileURLWithPath: path).lastPathComponent
+        
+        // Vérifier d'abord si le chemin absolu existe
         if let tags = scriptTags[path] {
             return tags
         }
         
-        // Vérifier si le chemin existe sous forme relative dans la configuration
+        // Ensuite vérifier si un chemin relatif existe
         let relativePath = configManager.convertToRelativePath(path) ?? path
         if let tags = scriptTags[relativePath] {
+            return tags
+        }
+        
+        // Enfin, vérifier si le nom du fichier seul existe
+        if let tags = scriptTags[fileName] {
             return tags
         }
         
@@ -122,8 +156,11 @@ class TagsViewModel: ObservableObject {
     }
     
     func updateScriptTags(scriptPath: String, tags: Set<String>) {
-        // Convertir en chemin relatif pour le stockage si possible
-        let storagePath = configManager.convertToRelativePath(scriptPath) ?? scriptPath
+        // Simplifier le chemin pour le stockage
+        let fileName = URL(fileURLWithPath: scriptPath).lastPathComponent
+        
+        // Essayer d'abord de convertir en chemin relatif pour le stockage si possible
+        let storagePath = configManager.convertToRelativePath(scriptPath) ?? fileName
         
         scriptTags[storagePath] = tags
         saveScriptTags()
