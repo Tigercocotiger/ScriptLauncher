@@ -193,6 +193,9 @@ class ContentViewModel: ObservableObject {
         if let index = scripts.firstIndex(where: { $0.id == updatedScript.id }) {
             print("[ContentViewModel] Mise à jour du script: \(updatedScript.name)")
             
+            // Sauvegarder l'ancien chemin pour la mise à jour des tags
+            let oldPath = scripts[index].path
+            
             // Sauvegarder les valeurs importantes
             let wasSelected = scripts[index].isSelected
             let wasFavorite = scripts[index].isFavorite
@@ -214,9 +217,36 @@ class ContentViewModel: ObservableObject {
                 selectedScript = scripts[index]
             }
             
-            // Mettre à jour les tags
-            let relativePath = convertToRelativePathIfPossible(updatedScript.path)
-            tagsViewModel.updateScriptTags(scriptPath: relativePath, tags: updatedScript.tags)
+            // Si le chemin a changé (renommage de fichier), gérer le déplacement des tags
+            if oldPath != updatedScript.path {
+                // Convertir les chemins en relatifs si possible
+                let oldRelativePath = convertToRelativePathIfPossible(oldPath)
+                let newRelativePath = convertToRelativePathIfPossible(updatedScript.path)
+                
+                // Récupérer les tags associés à l'ancien chemin
+                let tags = tagsViewModel.getTagsForScript(path: oldRelativePath)
+                
+                // Supprimer l'ancienne association
+                if !tags.isEmpty {
+                    var scriptTagsCopy = tagsViewModel.scriptTags
+                    scriptTagsCopy.removeValue(forKey: oldRelativePath)
+                    
+                    // Créer la nouvelle association
+                    scriptTagsCopy[newRelativePath] = tags
+                    
+                    // Mettre à jour le ViewModel
+                    tagsViewModel.scriptTags = scriptTagsCopy
+                    
+                    // Sauvegarder les changements
+                    tagsViewModel.saveChanges()
+                    
+                    print("[ContentViewModel] Tags migrés de \(oldRelativePath) vers \(newRelativePath)")
+                }
+            } else {
+                // Mettre à jour les tags si seulement les tags ont changé
+                let relativePath = convertToRelativePathIfPossible(updatedScript.path)
+                tagsViewModel.updateScriptTags(scriptPath: relativePath, tags: updatedScript.tags)
+            }
             
             // Mettre à jour les favoris
             saveFavorites()
@@ -225,7 +255,6 @@ class ContentViewModel: ObservableObject {
             viewRefreshID = UUID()
         }
     }
-    
     // MARK: - Tag Management
     func updateScriptTags(_ updatedScript: ScriptFile) {
         if let index = scripts.firstIndex(where: { $0.id == updatedScript.id }) {

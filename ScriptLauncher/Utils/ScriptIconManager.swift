@@ -11,44 +11,27 @@ class ScriptIconManager {
             throw NSError(domain: "ScriptIconManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "Le fichier n'existe pas"])
         }
         
-        // Convertir l'image en données avant de l'utiliser dans les méthodes asynchrones
-        // Cela évite les problèmes de non-sendable types
-        let iconData = try convertImageToPNGData(icon)
+        // Convertir l'image en données pour éviter les problèmes de Sendable
+        guard let tiffData = icon.tiffRepresentation else {
+            throw NSError(domain: "ScriptIconManager", code: 3, userInfo: [
+                NSLocalizedDescriptionKey: "Impossible de convertir l'image en données"
+            ])
+        }
         
-        // Utiliser l'API Finder pour définir l'icône personnalisée
+        // Utiliser uniquement l'API NSWorkspace pour définir l'icône
         return try await withCheckedThrowingContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async {
                 do {
+                    // Recréer l'image à partir des données
+                    let iconFromData = NSImage(data: tiffData)
                     
-                    // Utiliser AppleScript pour définir l'icône (meilleure compatibilité)
-                    let tempIconPath = NSTemporaryDirectory() + UUID().uuidString + ".png"
-                    try iconData.write(to: URL(fileURLWithPath: tempIconPath))
+                    // Définir directement l'icône via NSWorkspace
+                    let success = NSWorkspace.shared.setIcon(iconFromData, forFile: filePath, options: [])
                     
-                    let script = """
-                    tell application "Finder"
-                        set theFile to POSIX file "\(filePath)" as alias
-                        set theIcon to POSIX file "\(tempIconPath)" as alias
-                        set icon of theFile to icon of theIcon
-                    end tell
-                    """
-                    
-                    // Exécuter le script AppleScript
-                    var error: NSDictionary?
-                    NSAppleScript(source: script)?.executeAndReturnError(&error)
-                    
-                    // Nettoyer le fichier temporaire
-                    try? FileManager.default.removeItem(atPath: tempIconPath)
-                    
-                    if let error = error {
+                    if !success {
                         throw NSError(domain: "ScriptIconManager", code: 2, userInfo: [
-                            NSLocalizedDescriptionKey: "Erreur lors de la définition de l'icône: \(error)"
+                            NSLocalizedDescriptionKey: "Impossible d'appliquer l'icône au fichier"
                         ])
-                    }
-                    
-                    // Mettre à jour aussi l'icône dans le cache du système
-                    // On recrée une image à partir des données PNG
-                    if let tempImage = NSImage(data: iconData) {
-                        NSWorkspace.shared.setIcon(tempImage, forFile: filePath, options: [])
                     }
                     
                     continuation.resume(returning: true)
@@ -57,47 +40,6 @@ class ScriptIconManager {
                 }
             }
         }
-    }
-    
-    // Conversion directe NSImage -> PNG Data (pour éviter les problèmes de sendable)
-    // Cette méthode est maintenant synchrone pour éviter les problèmes de capture
-    private static func convertImageToPNGData(_ image: NSImage) throws -> Data {
-        // Créer un bitmap représentation pour l'icône
-        guard let representation = NSBitmapImageRep(
-            bitmapDataPlanes: nil,
-            pixelsWide: Int(image.size.width),
-            pixelsHigh: Int(image.size.height),
-            bitsPerSample: 8,
-            samplesPerPixel: 4,
-            hasAlpha: true,
-            isPlanar: false,
-            colorSpaceName: .deviceRGB,
-            bytesPerRow: 0,
-            bitsPerPixel: 0
-        ) else {
-            throw NSError(
-                domain: "ScriptIconManager",
-                code: 3,
-                userInfo: [NSLocalizedDescriptionKey: "Impossible de créer la représentation bitmap"]
-            )
-        }
-        
-        // Dessiner l'image dans la représentation
-        NSGraphicsContext.saveGraphicsState()
-        NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: representation)
-        image.draw(at: .zero, from: .zero, operation: .sourceOver, fraction: 1.0)
-        NSGraphicsContext.restoreGraphicsState()
-        
-        // Convertir en PNG
-        guard let data = representation.representation(using: .png, properties: [:]) else {
-            throw NSError(
-                domain: "ScriptIconManager",
-                code: 4,
-                userInfo: [NSLocalizedDescriptionKey: "Impossible de convertir l'image en PNG"]
-            )
-        }
-        
-        return data
     }
     
     // Renomme un fichier script
@@ -140,8 +82,8 @@ class ScriptIconManager {
             do {
                 var updatedScript = script
                 
-                // Si un nouveau nom est spécifié, renommer le fichier
-                if let newName = newName {
+                // Si un nouveau nom est spécifié qui diffère de l'actuel, renommer le fichier
+                if let newName = newName, newName != script.name {
                     let newPath = try await renameScript(at: script.path, to: newName)
                     
                     // Mettre à jour le script avec le nouveau chemin et nom
@@ -161,7 +103,7 @@ class ScriptIconManager {
                     // Utiliser le chemin mis à jour si le fichier a été renommé
                     let path = newName != nil ? updatedScript.path : script.path
                     
-                    // Appliquer l'icône sans capture de NSImage
+                    // Appliquer l'icône directement via NSWorkspace
                     let success = try await setCustomIcon(for: path, icon: newIcon)
                     
                     if !success {
