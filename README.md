@@ -142,6 +142,14 @@ Le système de design est centralisé dans `DesignSystem.swift`. Vous pouvez fac
 
 L'interface est actuellement en français. Pour ajouter d'autres langues, créez des fichiers de localisation pour les chaînes utilisées dans l'application.
 
+### 📝 Édition des propriétés de scripts
+
+La nouvelle fonctionnalité d'édition de propriétés vous permet de :
+- Modifier le nom des scripts (tout en conservant l'extension)
+- Personnaliser les icônes des scripts avec des images de votre choix
+- Conserver automatiquement les associations de tags lors du renommage
+- Visualiser un aperçu en temps réel des modifications
+
 ## 💻 Développement
 
 ### 🏗️ Architecture
