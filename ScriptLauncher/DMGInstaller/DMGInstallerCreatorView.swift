@@ -1,11 +1,3 @@
-//
-//  DMGInstallerCreatorView.swift
-//  ScriptLauncher
-//
-//  Created on 10/03/2025.
-//  Updated on 16/03/2025. - Added support for PKG installation
-//
-
 import SwiftUI
 import AppKit
 import Combine
@@ -21,6 +13,9 @@ struct DMGInstallerCreatorView: View {
     
     // Accès au TagsViewModel pour obtenir les tags existants
     @ObservedObject var tagsViewModel = ConfigManager.shared.getTagsViewModel()
+    
+    // Extracteur de données DMG avec mise à jour de progression observable
+    @StateObject private var dmgExtractor = DMGInfoExtractor()
     
     // Paramètres du template
     @State private var appName: String = ""
@@ -44,9 +39,6 @@ struct DMGInstallerCreatorView: View {
     // Stockage du dernier type d'installation détecté
     @State private var lastDetectedInstallationType: DMGScriptGenerator.InstallationType?
     @State private var installationTypeText: String = "Application (.app)"
-    
-    // Créer une instance du DMGInfoExtractor
-    private let dmgExtractor = DMGInfoExtractor()
     
     var body: some View {
         VStack(spacing: 0) {
@@ -133,16 +125,15 @@ struct DMGInstallerCreatorView: View {
                                 .disabled(isAnalyzingDMG || isCreatingScript)
                             }
                             
+                            // Barre de progression pour l'analyse DMG
                             if isAnalyzingDMG {
-                                HStack {
-                                    ProgressView()
-                                        .progressViewStyle(CircularProgressViewStyle())
-                                        .scaleEffect(0.8)
-                                    
-                                    Text("Analyse du DMG en cours...")
-                                        .font(.caption)
-                                        .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
-                                }
+                                // Utiliser notre nouveau composant de barre de progression
+                                ProgressBarComponent(
+                                    isDarkMode: isDarkMode,
+                                    progress: dmgExtractor.analysisProgress.progress,
+                                    message: dmgExtractor.analysisProgress.message,
+                                    animation: dmgExtractor.analysisProgress.progress < 1.0
+                                )
                                 .padding(.top, 4)
                             }
                         }
@@ -262,6 +253,35 @@ struct DMGInstallerCreatorView: View {
                 }
             )
         }
+        .onReceive(dmgExtractor.$analysisProgress) { progress in
+            // Mettre à jour l'état une fois l'analyse terminée
+            if progress.completed {
+                isAnalyzingDMG = false
+                
+                // Mettre à jour l'interface avec les informations obtenues
+                if let detectedVolumeName = progress.volumeName {
+                    volumeName = detectedVolumeName
+                }
+                
+                if let detectedPath = progress.appPath {
+                    appPath = detectedPath
+                }
+                
+                if let installationType = progress.installationType {
+                    lastDetectedInstallationType = installationType
+                    
+                    // Mettre à jour le texte du type d'installation
+                    switch installationType {
+                    case .application:
+                        installationTypeText = "Application (.app)"
+                    case .package:
+                        installationTypeText = "Package d'installation (.pkg)"
+                    case .unknown:
+                        installationTypeText = "Type inconnu"
+                    }
+                }
+            }
+        }
     }
     
     // Fonction pour vérifier si le formulaire est valide
@@ -297,29 +317,8 @@ struct DMGInstallerCreatorView: View {
             
             // Analyser le DMG pour extraire plus d'informations
             isAnalyzingDMG = true
-            dmgExtractor.mountAndExtractInfo(dmgPath: dmgPath) { (detectedVolumeName, detectedPath, installationType) in
-                isAnalyzingDMG = false
-                
-                // Stocker le type d'installation détecté
-                lastDetectedInstallationType = installationType
-                
-                // Mettre à jour le texte du type d'installation
-                switch installationType {
-                case .application:
-                    installationTypeText = "Application (.app)"
-                case .package:
-                    installationTypeText = "Package d'installation (.pkg)"
-                case .unknown:
-                    installationTypeText = "Type inconnu"
-                }
-                
-                if let detectedVolumeName = detectedVolumeName {
-                    volumeName = detectedVolumeName
-                }
-                
-                if let detectedPath = detectedPath {
-                    appPath = detectedPath
-                }
+            dmgExtractor.mountAndExtractInfo(dmgPath: dmgPath) { (_, _, _) in
+                // Cette callback est maintenant gérée par l'observateur de analysisProgress
             }
         }
     }
