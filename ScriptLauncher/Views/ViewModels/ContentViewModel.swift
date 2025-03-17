@@ -6,6 +6,7 @@
 //  Updated on 10/03/2025. - Added support for USB root relative paths
 //  Updated on 14/03/2025. - Fixed log display issues and method organization
 //  Updated on 17/03/2025. - Added tag filtering support
+//  Updated on 23/03/2025. - Added script properties editing
 //
 
 import SwiftUI
@@ -184,6 +185,45 @@ class ContentViewModel: ObservableObject {
         
         // Forcer le rafraîchissement des vues
         viewRefreshID = UUID()
+    }
+    
+    // MARK: - Script Properties Update
+    func updateScriptProperties(_ updatedScript: ScriptFile) {
+        // Trouver l'index du script dans le tableau
+        if let index = scripts.firstIndex(where: { $0.id == updatedScript.id }) {
+            print("[ContentViewModel] Mise à jour du script: \(updatedScript.name)")
+            
+            // Sauvegarder les valeurs importantes
+            let wasSelected = scripts[index].isSelected
+            let wasFavorite = scripts[index].isFavorite
+            let lastExecuted = scripts[index].lastExecuted
+            
+            // Mettre à jour le script dans le tableau
+            scripts[index] = ScriptFile(
+                id: updatedScript.id,
+                name: updatedScript.name,
+                path: updatedScript.path,
+                isFavorite: wasFavorite,
+                lastExecuted: lastExecuted,
+                isSelected: wasSelected,
+                tags: updatedScript.tags
+            )
+            
+            // Si le script était sélectionné, mettre à jour la sélection
+            if selectedScript?.id == updatedScript.id {
+                selectedScript = scripts[index]
+            }
+            
+            // Mettre à jour les tags
+            let relativePath = convertToRelativePathIfPossible(updatedScript.path)
+            tagsViewModel.updateScriptTags(scriptPath: relativePath, tags: updatedScript.tags)
+            
+            // Mettre à jour les favoris
+            saveFavorites()
+            
+            // Forcer le rafraîchissement des vues
+            viewRefreshID = UUID()
+        }
     }
     
     // MARK: - Tag Management

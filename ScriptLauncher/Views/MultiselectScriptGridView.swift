@@ -6,6 +6,7 @@
 //  Updated on 06/03/2025. - Added tags support
 //  Updated on 07/03/2025. - Added tag color backgrounds with sections
 //  Updated on 17/03/2025. - Added tag filtering support
+//  Updated on 23/03/2025. - Added script properties editing
 //
 
 import SwiftUI
@@ -24,6 +25,7 @@ struct MultiselectScriptGridView: View {
     let onSelectAll: () -> Void
     let onUnselectAll: () -> Void
     let onTagClick: ((String) -> Void)?  // Nouveau paramètre
+    let onScriptUpdated: ((ScriptFile) -> Void)? // Nouveau callback pour les mises à jour de script
     
     // Nombre total de scripts affichés après filtrage
     private var filteredScriptsCount: Int {
@@ -126,7 +128,8 @@ struct MultiselectScriptGridView: View {
                                 onToggleSelect: { onToggleSelect(script) },
                                 onFavorite: { onToggleFavorite(script) },
                                 onUpdateTags: { onUpdateTags($0) },
-                                onTagClick: onTagClick
+                                onTagClick: onTagClick,
+                                onScriptUpdated: onScriptUpdated
                             )
                             .frame(width: 160, height: 180)
                         }
@@ -148,10 +151,12 @@ struct MultiselectScriptGridItemView: View {
     let onFavorite: () -> Void
     let onUpdateTags: (ScriptFile) -> Void
     let onTagClick: ((String) -> Void)?  // Nouveau paramètre
+    let onScriptUpdated: ((ScriptFile) -> Void)? // Nouveau callback pour mise à jour
     
     @State private var scriptIcon: NSImage? = nil
     @State private var hasLoadedIcon: Bool = false
     @State private var showTagsEditor: Bool = false
+    @State private var showPropertiesEditor: Bool = false
     
     // Extraire le nom du script sans l'extension
     private var scriptNameWithoutExtension: String {
@@ -280,6 +285,54 @@ struct MultiselectScriptGridItemView: View {
                 .buttonStyle(PlainButtonStyle())
                 .position(x: 10, y: 10)
                 .help(script.isFavorite ? "Retirer des favoris" : "Ajouter aux favoris")
+                
+                // Bouton pour éditer les propriétés (en bas à gauche)
+                Button(action: {
+                    showPropertiesEditor = true
+                }) {
+                    Circle()
+                        .fill(Color.gray.opacity(0.3))
+                        .frame(width: 24, height: 24)
+                        .overlay(
+                            Image(systemName: "square.and.pencil")
+                                .font(.system(size: 10))
+                                .foregroundColor(Color.gray.opacity(0.7))
+                        )
+                }
+                .buttonStyle(PlainButtonStyle())
+                .position(x: 10, y: 70)
+                .help("Modifier le nom et l'icône")
+                .sheet(isPresented: $showPropertiesEditor) {
+                    ScriptPropertiesEditor(
+                        isPresented: $showPropertiesEditor,
+                        script: script,
+                        isDarkMode: isDarkMode,
+                        onSave: { script, newName, newIcon in
+                            // Appliquer les modifications via ScriptIconManager
+                            ScriptIconManager.applyChanges(for: script, newName: newName, newIcon: newIcon) { result in
+                                // Fermer la fenêtre d'édition
+                                showPropertiesEditor = false
+                                
+                                // Traiter le résultat
+                                switch result {
+                                case .success(let updatedScript):
+                                    // Recharger l'icône si elle a été modifiée
+                                    loadScriptIcon()
+                                    // Passer le script mis à jour au parent
+                                    onScriptUpdated?(updatedScript)
+                                case .failure(let error):
+                                    // Afficher l'erreur
+                                    let alert = NSAlert()
+                                    alert.messageText = "Erreur lors de la modification"
+                                    alert.informativeText = error.localizedDescription
+                                    alert.alertStyle = .critical
+                                    alert.addButton(withTitle: "OK")
+                                    alert.runModal()
+                                }
+                            }
+                        }
+                    )
+                }
                 
                 // Bouton pour gérer les tags en bas à droite
                 Button(action: {
@@ -427,69 +480,4 @@ struct TagSectionShape: Shape {
         
         return path
     }
-}
-
-// MARK: - Preview
-#Preview("MultiselectScriptGridView - Mode clair") {
-    let tagsViewModel = TagsViewModel()
-    tagsViewModel.addTag(name: "Important", color: .red)
-    tagsViewModel.addTag(name: "Automatisation", color: .blue)
-    tagsViewModel.addTag(name: "Maintenance", color: .green)
-    tagsViewModel.addTag(name: "Documentation", color: .orange)
-    tagsViewModel.addTag(name: "Backup", color: .purple)
-    
-    return MultiselectScriptGridView(
-        scripts: [
-            ScriptFile(name: "script1.scpt", path: "/path/1", isFavorite: true, lastExecuted: Date(), isSelected: true, tags: ["Important"]),
-            ScriptFile(name: "script2.applescript", path: "/path/2", isFavorite: false, lastExecuted: nil, isSelected: false),
-            ScriptFile(name: "script3.scpt", path: "/path/3", isFavorite: false, lastExecuted: Date().addingTimeInterval(-3600), isSelected: false, tags: ["Automatisation"]),
-            ScriptFile(name: "script4.scpt", path: "/path/4", isFavorite: true, lastExecuted: Date().addingTimeInterval(-86400), isSelected: false, tags: ["Important", "Automatisation"]),
-            ScriptFile(name: "script5.scpt", path: "/path/5", isFavorite: false, lastExecuted: Date(), isSelected: false, tags: ["Important", "Automatisation", "Maintenance"]),
-            ScriptFile(name: "script6.scpt", path: "/path/6", isFavorite: false, lastExecuted: Date(), isSelected: false, tags: ["Documentation", "Automatisation", "Backup", "Maintenance"]),
-        ],
-        isDarkMode: false,
-        showFavoritesOnly: false,
-        searchText: "",
-        selectedTag: nil,
-        tagsViewModel: tagsViewModel,
-        onToggleSelect: { _ in },
-        onToggleFavorite: { _ in },
-        onUpdateTags: { _ in },
-        onSelectAll: {},
-        onUnselectAll: {},
-        onTagClick: { _ in }
-    )
-    .frame(width: 600, height: 400)
-    .background(Color.white)
-}
-
-#Preview("MultiselectScriptGridView - Mode sombre") {
-    let tagsViewModel = TagsViewModel()
-    tagsViewModel.addTag(name: "Important", color: .red)
-    tagsViewModel.addTag(name: "Automatisation", color: .blue)
-    tagsViewModel.addTag(name: "Maintenance", color: .green)
-    tagsViewModel.addTag(name: "Documentation", color: .orange)
-    
-    return MultiselectScriptGridView(
-        scripts: [
-            ScriptFile(name: "script1.scpt", path: "/path/1", isFavorite: true, lastExecuted: Date(), isSelected: false, tags: ["Important"]),
-            ScriptFile(name: "script2.applescript", path: "/path/2", isFavorite: false, lastExecuted: nil, isSelected: false),
-            ScriptFile(name: "script3.scpt", path: "/path/3", isFavorite: false, lastExecuted: Date().addingTimeInterval(-3600), isSelected: false, tags: ["Automatisation"]),
-            ScriptFile(name: "script4.scpt", path: "/path/4", isFavorite: true, lastExecuted: Date().addingTimeInterval(-86400), isSelected: true, tags: ["Important", "Automatisation"]),
-            ScriptFile(name: "script5.scpt", path: "/path/5", isFavorite: false, lastExecuted: Date(), isSelected: false, tags: ["Important", "Automatisation", "Maintenance", "Documentation"]),
-        ],
-        isDarkMode: true,
-        showFavoritesOnly: false,
-        searchText: "",
-        selectedTag: "Important",
-        tagsViewModel: tagsViewModel,
-        onToggleSelect: { _ in },
-        onToggleFavorite: { _ in },
-        onUpdateTags: { _ in },
-        onSelectAll: {},
-        onUnselectAll: {},
-        onTagClick: { _ in }
-    )
-    .frame(width: 600, height: 400)
-    .background(Color.black)
 }

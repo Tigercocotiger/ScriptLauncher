@@ -3,6 +3,7 @@
 //  ScriptLauncher
 //
 //  Created by MacBook-16/M1P-001 on 10/03/2025.
+//  Updated on 23/03/2025. - Added script properties editing
 //
 
 
@@ -23,6 +24,21 @@ struct HelpContent {
             • ⌘ + . : Arrêter tous les scripts en cours
             • ⌘ + ⇧ + N : Créer un installateur DMG
             • Échap : Annuler la recherche ou fermer l'aide
+            """
+        ),
+        HelpSection(
+            title: "Personnalisation des scripts",
+            content: """
+            Vous pouvez modifier les propriétés visuelles de vos scripts :
+            
+            1. Cliquez sur l'icône de crayon à côté d'un script
+            2. Modifiez le nom du script (l'extension est conservée)
+            3. Changez l'icône en sélectionnant une nouvelle image
+            4. Appuyez sur "Enregistrer" pour appliquer les modifications
+            
+            Cette fonction est utile pour repérer visuellement vos scripts les plus importants avec des icônes personnalisées. Les icônes standard peuvent être changées pour des icônes colorées ou qui reflètent mieux le but du script.
+            
+            Note : La modification s'applique uniquement à l'apparence du fichier, pas à son contenu.
             """
         ),
         HelpSection(

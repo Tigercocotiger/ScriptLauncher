@@ -5,6 +5,7 @@
 //  Created on 05/03/2025.
 //  Updated on 06/03/2025. - Added tags support
 //  Updated on 17/03/2025. - Added tag filtering support
+//  Updated on 23/03/2025. - Added script properties editing
 //
 
 import SwiftUI
@@ -20,10 +21,12 @@ struct MultiselectScriptRowView: View {
     let onFavorite: () -> Void
     let onUpdateTags: (ScriptFile) -> Void
     let onTagClick: ((String) -> Void)? // Nouveau paramètre
+    let onScriptUpdated: ((ScriptFile) -> Void)? // Nouveau callback pour les mises à jour de script
     
     @State private var scriptIcon: NSImage? = nil
     @State private var hasLoadedIcon: Bool = false
     @State private var showTagsEditor: Bool = false
+    @State private var showPropertiesEditor: Bool = false
     
     // Extraire le nom du script sans l'extension
     private var scriptNameWithoutExtension: String {
@@ -109,6 +112,19 @@ struct MultiselectScriptRowView: View {
                     .font(.caption)
                     .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
             }
+            
+            // Nouveau bouton pour éditer les propriétés
+            ScriptPropertiesButton(
+                script: script,
+                isDarkMode: isDarkMode,
+                showPropertiesEditor: $showPropertiesEditor,
+                onSuccess: { updatedScript in
+                    // Recharger l'icône si elle a été modifiée
+                    loadScriptIcon()
+                    // Passer le script mis à jour au parent
+                    onScriptUpdated?(updatedScript)
+                }
+            )
             
             // Bouton pour gérer les tags
             Button(action: {
@@ -207,7 +223,8 @@ struct MultiselectScriptRowView: View {
             onToggleSelect: {},
             onFavorite: {},
             onUpdateTags: { _ in },
-            onTagClick: { _ in }
+            onTagClick: { _ in },
+            onScriptUpdated: { _ in }
         )
         .padding(.horizontal)
         .background(Color.white)
@@ -228,7 +245,8 @@ struct MultiselectScriptRowView: View {
             onToggleSelect: {},
             onFavorite: {},
             onUpdateTags: { _ in },
-            onTagClick: { _ in }
+            onTagClick: { _ in },
+            onScriptUpdated: { _ in }
         )
         .padding(.horizontal)
         
@@ -248,7 +266,8 @@ struct MultiselectScriptRowView: View {
             onToggleSelect: {},
             onFavorite: {},
             onUpdateTags: { _ in },
-            onTagClick: { _ in }
+            onTagClick: { _ in },
+            onScriptUpdated: { _ in }
         )
         .padding(.horizontal)
         
@@ -268,7 +287,8 @@ struct MultiselectScriptRowView: View {
             onToggleSelect: {},
             onFavorite: {},
             onUpdateTags: { _ in },
-            onTagClick: { _ in }
+            onTagClick: { _ in },
+            onScriptUpdated: { _ in }
         )
         .padding(.horizontal)
     }
@@ -296,7 +316,8 @@ struct MultiselectScriptRowView: View {
             onToggleSelect: {},
             onFavorite: {},
             onUpdateTags: { _ in },
-            onTagClick: { _ in }
+            onTagClick: { _ in },
+            onScriptUpdated: { _ in }
         )
         .padding(.horizontal)
         .background(Color.black)

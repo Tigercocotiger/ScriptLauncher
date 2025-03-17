@@ -60,7 +60,11 @@ struct ScriptsListPanel: View {
                     onUpdateTags: viewModel.updateScriptTags,
                     onSelectAll: viewModel.selectAllScripts,
                     onUnselectAll: viewModel.unselectAllScripts,
-                    onTagClick: viewModel.filterByTag  // Passer la méthode
+                    onTagClick: viewModel.filterByTag,  // Passer la méthode
+                    onScriptUpdated: { updatedScript in
+                        // Appeler la méthode updateScriptProperties du ViewModel
+                        viewModel.updateScriptProperties(updatedScript)
+                    }
                 )
             } else {
                 MultiselectScriptsList(
@@ -75,7 +79,11 @@ struct ScriptsListPanel: View {
                     onUpdateTags: viewModel.updateScriptTags,
                     onSelectAll: viewModel.selectAllScripts,
                     onUnselectAll: viewModel.unselectAllScripts,
-                    onTagClick: viewModel.filterByTag  // Passer la méthode
+                    onTagClick: viewModel.filterByTag,  // Passer la méthode
+                    onScriptUpdated: { updatedScript in
+                        // Appeler la méthode updateScriptProperties du ViewModel
+                        viewModel.updateScriptProperties(updatedScript)
+                    }
                 )
             }
             
@@ -96,48 +104,4 @@ struct ScriptsListPanel: View {
             y: DesignSystem.shadowY
         )
     }
-}
-
-#Preview("ScriptsListPanel") {
-    let viewModel = ContentViewModel()
-    viewModel.isDarkMode = false
-    viewModel.scripts = [
-        ScriptFile(name: "script1.scpt", path: "/path/1", isFavorite: true, lastExecuted: Date(), tags: ["Important"]),
-        ScriptFile(name: "script2.applescript", path: "/path/2", isFavorite: false, lastExecuted: nil)
-    ]
-    
-    // Ajouter des tags de test
-    viewModel.tagsViewModel.addTag(name: "Important", color: .red)
-    viewModel.tagsViewModel.addTag(name: "Automatisation", color: .blue)
-    
-    return ScriptsListPanel(
-        viewModel: viewModel,
-        isSearchFocused: false,
-        onSearchFocusChange: { _ in }
-    )
-    .frame(width: 500, height: 600)
-}
-
-#Preview("ScriptsListPanel - Tag Filter") {
-    let viewModel = ContentViewModel()
-    viewModel.isDarkMode = true
-    viewModel.scripts = [
-        ScriptFile(name: "script1.scpt", path: "/path/1", isFavorite: true, lastExecuted: Date(), tags: ["Important"]),
-        ScriptFile(name: "script2.applescript", path: "/path/2", isFavorite: false, lastExecuted: nil),
-        ScriptFile(name: "script3.scpt", path: "/path/3", isFavorite: false, lastExecuted: Date(), tags: ["Automatisation"]),
-        ScriptFile(name: "script4.scpt", path: "/path/4", isFavorite: true, lastExecuted: Date(), tags: ["Important", "Automatisation"]),
-    ]
-    
-    // Ajouter des tags de test
-    viewModel.tagsViewModel.addTag(name: "Important", color: .red)
-    viewModel.tagsViewModel.addTag(name: "Automatisation", color: .blue)
-    viewModel.selectedTag = "Important"
-    
-    return ScriptsListPanel(
-        viewModel: viewModel,
-        isSearchFocused: false,
-        onSearchFocusChange: { _ in }
-    )
-    .frame(width: 500, height: 600)
-    .background(Color.black)
 }

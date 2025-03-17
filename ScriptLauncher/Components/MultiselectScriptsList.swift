@@ -5,6 +5,7 @@
 //  Created by MacBook-16/M1P-001 on 05/03/2025.
 //  Updated on 06/03/2025. - Added tags support
 //  Updated on 17/03/2025. - Added tag filtering support
+//  Updated on 23/03/2025. - Added script properties editing
 //
 
 import SwiftUI
@@ -22,6 +23,7 @@ struct MultiselectScriptsList: View {
     let onSelectAll: () -> Void
     let onUnselectAll: () -> Void
     let onTagClick: ((String) -> Void)?  // Nouveau paramètre
+    let onScriptUpdated: ((ScriptFile) -> Void)? // Nouveau callback pour les mises à jour de script
     
     // Nombre total de scripts affichés après filtrage
     private var filteredScriptsCount: Int {
@@ -88,7 +90,8 @@ struct MultiselectScriptsList: View {
                             onToggleSelect: { onToggleSelect(script) },
                             onFavorite: { onToggleFavorite(script) },
                             onUpdateTags: { onUpdateTags($0) },
-                            onTagClick: onTagClick
+                            onTagClick: onTagClick,
+                            onScriptUpdated: onScriptUpdated
                         )
                         .padding(.horizontal, DesignSystem.spacing)
                         .padding(.vertical, 4)
@@ -153,7 +156,8 @@ struct MultiselectScriptsList: View {
         onUpdateTags: { _ in },
         onSelectAll: {},
         onUnselectAll: {},
-        onTagClick: { _ in }
+        onTagClick: { _ in },
+        onScriptUpdated: { _ in }
     )
     .frame(width: 400, height: 300)
     .background(Color.white)
@@ -174,7 +178,8 @@ struct MultiselectScriptsList: View {
         onUpdateTags: { _ in },
         onSelectAll: {},
         onUnselectAll: {},
-        onTagClick: { _ in }
+        onTagClick: { _ in },
+        onScriptUpdated: { _ in }
     )
     .frame(width: 400, height: 300)
     .background(Color.black)
