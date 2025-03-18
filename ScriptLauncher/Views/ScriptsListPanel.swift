@@ -14,6 +14,7 @@ struct ScriptsListPanel: View {
                 isDarkMode: $viewModel.isDarkMode,
                 showHelp: $viewModel.showHelp,
                 isGridView: $viewModel.isGridView,
+                isEditMode: $viewModel.isEditMode,
                 isFocused: isSearchFocused,
                 onFocusChange: onSearchFocusChange
             )
@@ -37,14 +38,15 @@ struct ScriptsListPanel: View {
                     isDarkMode: viewModel.isDarkMode,
                     showFavoritesOnly: viewModel.showFavoritesOnly,
                     searchText: viewModel.searchText,
-                    selectedTag: viewModel.selectedTag,  // Nouveau paramètre
+                    selectedTag: viewModel.selectedTag,
+                    isEditMode: viewModel.isEditMode,
                     tagsViewModel: viewModel.tagsViewModel,
                     onToggleSelect: viewModel.toggleScriptSelection,
                     onToggleFavorite: viewModel.toggleFavorite,
                     onUpdateTags: viewModel.updateScriptTags,
                     onSelectAll: viewModel.selectAllScripts,
                     onUnselectAll: viewModel.unselectAllScripts,
-                    onTagClick: viewModel.filterByTag,  // Passer la méthode
+                    onTagClick: viewModel.filterByTag,
                     onScriptUpdated: { updatedScript in
                         // Appeler la méthode updateScriptProperties du ViewModel
                         viewModel.updateScriptProperties(updatedScript)
@@ -56,14 +58,15 @@ struct ScriptsListPanel: View {
                     isDarkMode: viewModel.isDarkMode,
                     showFavoritesOnly: viewModel.showFavoritesOnly,
                     searchText: viewModel.searchText,
-                    selectedTag: viewModel.selectedTag,  // Nouveau paramètre
+                    selectedTag: viewModel.selectedTag,
+                    isEditMode: viewModel.isEditMode,
                     tagsViewModel: viewModel.tagsViewModel,
                     onToggleSelect: viewModel.toggleScriptSelection,
                     onToggleFavorite: viewModel.toggleFavorite,
                     onUpdateTags: viewModel.updateScriptTags,
                     onSelectAll: viewModel.selectAllScripts,
                     onUnselectAll: viewModel.unselectAllScripts,
-                    onTagClick: viewModel.filterByTag,  // Passer la méthode
+                    onTagClick: viewModel.filterByTag,
                     onScriptUpdated: { updatedScript in
                         // Appeler la méthode updateScriptProperties du ViewModel
                         viewModel.updateScriptProperties(updatedScript)
@@ -88,4 +91,20 @@ struct ScriptsListPanel: View {
             y: DesignSystem.shadowY
         )
     }
+}
+
+#Preview("ScriptsListPanel") {
+    ScriptsListPanel(
+        viewModel: {
+            let vm = ContentViewModel()
+            vm.scripts = [
+                ScriptFile(name: "test1.scpt", path: "/test/path", isFavorite: true, lastExecuted: Date()),
+                ScriptFile(name: "test2.scpt", path: "/test/path", isFavorite: false, lastExecuted: nil)
+            ]
+            return vm
+        }(),
+        isSearchFocused: false,
+        onSearchFocusChange: { _ in }
+    )
+    .frame(width: 500, height: 600)
 }

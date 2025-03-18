@@ -6,6 +6,7 @@
 //  Updated on 06/03/2025. - Added tags support
 //  Updated on 17/03/2025. - Added tag filtering support
 //  Updated on 23/03/2025. - Added script properties editing
+//  Updated on 25/03/2025. - Added edit mode support
 //
 
 import SwiftUI
@@ -16,12 +17,13 @@ struct MultiselectScriptRowView: View {
     let script: ScriptFile
     let isDarkMode: Bool
     let tagsViewModel: TagsViewModel
-    let selectedTag: String? // Nouveau paramètre
+    let selectedTag: String?
+    let isEditMode: Bool
     let onToggleSelect: () -> Void
     let onFavorite: () -> Void
     let onUpdateTags: (ScriptFile) -> Void
-    let onTagClick: ((String) -> Void)? // Nouveau paramètre
-    let onScriptUpdated: ((ScriptFile) -> Void)? // Nouveau callback pour les mises à jour de script
+    let onTagClick: ((String) -> Void)?
+    let onScriptUpdated: ((ScriptFile) -> Void)?
     
     @State private var scriptIcon: NSImage? = nil
     @State private var hasLoadedIcon: Bool = false
@@ -113,49 +115,52 @@ struct MultiselectScriptRowView: View {
                     .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
             }
             
-            // Nouveau bouton pour éditer les propriétés
-            ScriptPropertiesButton(
-                script: script,
-                isDarkMode: isDarkMode,
-                showPropertiesEditor: $showPropertiesEditor,
-                onSuccess: { updatedScript in
-                    // Recharger l'icône si elle a été modifiée
-                    loadScriptIcon()
-                    // Passer le script mis à jour au parent
-                    onScriptUpdated?(updatedScript)
+            // Groupe de boutons d'édition - visible uniquement en mode édition
+            HStack(spacing: 4) {
+                if isEditMode {
+                    // Bouton pour éditer les propriétés
+                    ScriptPropertiesButton(
+                        script: script,
+                        isDarkMode: isDarkMode,
+                        showPropertiesEditor: $showPropertiesEditor,
+                        onSuccess: { updatedScript in
+                            loadScriptIcon()
+                            onScriptUpdated?(updatedScript)
+                        }
+                    )
+                    
+                    // Bouton pour gérer les tags
+                    Button(action: {
+                        showTagsEditor = true
+                    }) {
+                        Image(systemName: "tag")
+                            .font(.system(size: 12))
+                            .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .opacity(0.6)
+                    .help("Gérer les tags")
+                    .sheet(isPresented: $showTagsEditor) {
+                        ScriptTagsEditor(
+                            tagsViewModel: tagsViewModel,
+                            script: script,
+                            isPresented: $showTagsEditor,
+                            isDarkMode: isDarkMode,
+                            onSave: onUpdateTags
+                        )
+                    }
+                    
+                    // Bouton favori
+                    Button(action: onFavorite) {
+                        Image(systemName: script.isFavorite ? "star.slash" : "star")
+                            .font(.system(size: 12))
+                            .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .opacity(0.6)
+                    .help(script.isFavorite ? "Retirer des favoris" : "Ajouter aux favoris")
                 }
-            )
-            
-            // Bouton pour gérer les tags
-            Button(action: {
-                showTagsEditor = true
-            }) {
-                Image(systemName: "tag")
-                    .font(.system(size: 12))
-                    .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
             }
-            .buttonStyle(PlainButtonStyle())
-            .opacity(0.6)
-            .help("Gérer les tags")
-            .sheet(isPresented: $showTagsEditor) {
-                ScriptTagsEditor(
-                    tagsViewModel: tagsViewModel,
-                    script: script,
-                    isPresented: $showTagsEditor,
-                    isDarkMode: isDarkMode, // Ajout du paramètre isDarkMode
-                    onSave: onUpdateTags
-                )
-            }
-            
-            // Bouton favori
-            Button(action: onFavorite) {
-                Image(systemName: script.isFavorite ? "star.slash" : "star")
-                    .font(.system(size: 12))
-                    .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
-            }
-            .buttonStyle(PlainButtonStyle())
-            .opacity(0.6)
-            .help(script.isFavorite ? "Retirer des favoris" : "Ajouter aux favoris")
         }
         .padding(.vertical, 6)
         .contentShape(Rectangle())
@@ -214,12 +219,29 @@ struct MultiselectScriptRowView: View {
     )
     
     return VStack(spacing: 8) {
-        // Script normal
+        // Script normal avec mode édition activé
         MultiselectScriptRowView(
             script: script,
             isDarkMode: false,
             tagsViewModel: tagsViewModel,
             selectedTag: nil,
+            isEditMode: true,
+            onToggleSelect: {},
+            onFavorite: {},
+            onUpdateTags: { _ in },
+            onTagClick: { _ in },
+            onScriptUpdated: { _ in }
+        )
+        .padding(.horizontal)
+        .background(Color.white)
+        
+        // Script normal avec mode édition désactivé
+        MultiselectScriptRowView(
+            script: script,
+            isDarkMode: false,
+            tagsViewModel: tagsViewModel,
+            selectedTag: nil,
+            isEditMode: false,
             onToggleSelect: {},
             onFavorite: {},
             onUpdateTags: { _ in },
@@ -242,6 +264,7 @@ struct MultiselectScriptRowView: View {
             isDarkMode: false,
             tagsViewModel: tagsViewModel,
             selectedTag: nil,
+            isEditMode: true,
             onToggleSelect: {},
             onFavorite: {},
             onUpdateTags: { _ in },
@@ -263,27 +286,7 @@ struct MultiselectScriptRowView: View {
             isDarkMode: false,
             tagsViewModel: tagsViewModel,
             selectedTag: nil,
-            onToggleSelect: {},
-            onFavorite: {},
-            onUpdateTags: { _ in },
-            onTagClick: { _ in },
-            onScriptUpdated: { _ in }
-        )
-        .padding(.horizontal)
-        
-        // Script avec tag sélectionné
-        MultiselectScriptRowView(
-            script: ScriptFile(
-                name: "tagged_script.scpt",
-                path: "/System/Applications/Utilities/Console.app",
-                isFavorite: false,
-                lastExecuted: Date(),
-                isSelected: false,
-                tags: ["Important"]
-            ),
-            isDarkMode: false,
-            tagsViewModel: tagsViewModel,
-            selectedTag: "Important",
+            isEditMode: true,
             onToggleSelect: {},
             onFavorite: {},
             onUpdateTags: { _ in },
@@ -293,7 +296,7 @@ struct MultiselectScriptRowView: View {
         .padding(.horizontal)
     }
     .padding()
-    .frame(width: 400, height: 200)
+    .frame(width: 400, height: 300)
 }
 
 #Preview("MultiselectScriptRowView - Mode sombre") {
@@ -313,6 +316,7 @@ struct MultiselectScriptRowView: View {
             isDarkMode: true,
             tagsViewModel: tagsViewModel,
             selectedTag: "Important",
+            isEditMode: true,
             onToggleSelect: {},
             onFavorite: {},
             onUpdateTags: { _ in },

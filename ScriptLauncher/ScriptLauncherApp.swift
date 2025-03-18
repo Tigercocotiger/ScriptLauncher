@@ -124,6 +124,17 @@ struct ScriptLauncherApp: App {
                        
                        Divider()
                        
+                       // Nouveau menu pour le mode d'édition
+                       Button("Afficher/masquer boutons d'édition") {
+                           NotificationCenter.default.post(
+                               name: NSNotification.Name("ToggleEditMode"),
+                               object: nil
+                           )
+                       }
+                       .keyboardShortcut("e", modifiers: .command)
+                       
+                       Divider()
+                       
                        Button("Afficher l'aide") {
                            NotificationCenter.default.post(
                                name: NSNotification.Name("ToggleHelp"),

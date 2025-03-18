@@ -6,6 +6,7 @@
 //  Updated on 06/03/2025. - Added tags support
 //  Updated on 17/03/2025. - Added tag filtering support
 //  Updated on 23/03/2025. - Added script properties editing
+//  Updated on 25/03/2025. - Added edit mode support
 //
 
 import SwiftUI
@@ -15,15 +16,16 @@ struct MultiselectScriptsList: View {
     let isDarkMode: Bool
     let showFavoritesOnly: Bool
     let searchText: String
-    let selectedTag: String?  // Nouveau paramètre
+    let selectedTag: String?
+    let isEditMode: Bool
     let tagsViewModel: TagsViewModel
     let onToggleSelect: (ScriptFile) -> Void
     let onToggleFavorite: (ScriptFile) -> Void
     let onUpdateTags: (ScriptFile) -> Void
     let onSelectAll: () -> Void
     let onUnselectAll: () -> Void
-    let onTagClick: ((String) -> Void)?  // Nouveau paramètre
-    let onScriptUpdated: ((ScriptFile) -> Void)? // Nouveau callback pour les mises à jour de script
+    let onTagClick: ((String) -> Void)?
+    let onScriptUpdated: ((ScriptFile) -> Void)?
     
     // Nombre total de scripts affichés après filtrage
     private var filteredScriptsCount: Int {
@@ -87,6 +89,7 @@ struct MultiselectScriptsList: View {
                             isDarkMode: isDarkMode,
                             tagsViewModel: tagsViewModel,
                             selectedTag: selectedTag,
+                            isEditMode: isEditMode,
                             onToggleSelect: { onToggleSelect(script) },
                             onFavorite: { onToggleFavorite(script) },
                             onUpdateTags: { onUpdateTags($0) },
@@ -150,6 +153,7 @@ struct MultiselectScriptsList: View {
         showFavoritesOnly: false,
         searchText: "",
         selectedTag: nil,
+        isEditMode: true,
         tagsViewModel: tagsViewModel,
         onToggleSelect: { _ in },
         onToggleFavorite: { _ in },
@@ -172,6 +176,7 @@ struct MultiselectScriptsList: View {
         showFavoritesOnly: false,
         searchText: "introuvable",
         selectedTag: nil,
+        isEditMode: false,
         tagsViewModel: tagsViewModel,
         onToggleSelect: { _ in },
         onToggleFavorite: { _ in },

@@ -7,6 +7,7 @@
 //  Updated on 14/03/2025. - Fixed log display issues and method organization
 //  Updated on 17/03/2025. - Added tag filtering support
 //  Updated on 23/03/2025. - Added script properties editing
+//  Updated on 25/03/2025. - Added edit mode support
 //
 
 import SwiftUI
@@ -23,6 +24,7 @@ class ContentViewModel: ObservableObject {
     @Published var isDarkMode: Bool = false
     @Published var isGridView: Bool = false
     @Published var targetFolderPath: String = ConfigManager.shared.folderPath
+    @Published var isEditMode: Bool = true // Nouveau paramètre pour le mode d'édition
     
     // Tag filtering
     @Published var selectedTag: String? = nil

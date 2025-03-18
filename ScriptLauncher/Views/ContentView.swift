@@ -68,6 +68,10 @@ struct ContentView: View {
             // Sauvegarde la préférence de vue
             ConfigManager.shared.isGridView = newValue
         }
+        .onReceive(Just(viewModel.isEditMode)) { newValue in
+            // Sauvegarde la préférence du mode d'édition
+            ConfigManager.shared.isEditMode = newValue
+        }
         .sheet(isPresented: $viewModel.showHelp) {
             HelpView(
                 helpSections: HelpContent.helpSections,
@@ -94,6 +98,16 @@ struct ContentView: View {
         ) { [weak viewModel] _ in
             guard let viewModel = viewModel else { return }
             changeFolderTarget(viewModel: viewModel)
+        }
+        
+        // Nouvelle notification pour le mode d'édition
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("ToggleEditMode"),
+            object: nil,
+            queue: .main
+        ) { [weak viewModel] _ in
+            guard let viewModel = viewModel else { return }
+            viewModel.isEditMode.toggle()
         }
     }
     

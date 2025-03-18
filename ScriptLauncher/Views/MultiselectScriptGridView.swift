@@ -7,6 +7,9 @@
 //  Updated on 07/03/2025. - Added tag color backgrounds with sections
 //  Updated on 17/03/2025. - Added tag filtering support
 //  Updated on 23/03/2025. - Added script properties editing
+//  Updated on 25/03/2025. - Added edit mode support
+//  Updated on 29/03/2025. - Removed circle background, increased icon size
+//  Updated on 30/03/2025. - Added tag color dots, reorganized edit buttons
 //
 
 import SwiftUI
@@ -17,15 +20,16 @@ struct MultiselectScriptGridView: View {
     let isDarkMode: Bool
     let showFavoritesOnly: Bool
     let searchText: String
-    let selectedTag: String?  // Nouveau paramètre
+    let selectedTag: String?
+    let isEditMode: Bool
     let tagsViewModel: TagsViewModel
     let onToggleSelect: (ScriptFile) -> Void
     let onToggleFavorite: (ScriptFile) -> Void
     let onUpdateTags: (ScriptFile) -> Void
     let onSelectAll: () -> Void
     let onUnselectAll: () -> Void
-    let onTagClick: ((String) -> Void)?  // Nouveau paramètre
-    let onScriptUpdated: ((ScriptFile) -> Void)? // Nouveau callback pour les mises à jour de script
+    let onTagClick: ((String) -> Void)?
+    let onScriptUpdated: ((ScriptFile) -> Void)?
     
     // Nombre total de scripts affichés après filtrage
     private var filteredScriptsCount: Int {
@@ -52,8 +56,6 @@ struct MultiselectScriptGridView: View {
         GridItem(.adaptive(minimum: 160, maximum: 160), spacing: 20)
     ]
     
-    // Cette modification concerne la structure MultiselectScriptGridView
-
     var body: some View {
         VStack(spacing: 0) {
             // Barre d'actions de sélection
@@ -139,6 +141,7 @@ struct MultiselectScriptGridView: View {
                                         isDarkMode: isDarkMode,
                                         tagsViewModel: tagsViewModel,
                                         selectedTag: selectedTag,
+                                        isEditMode: isEditMode,
                                         onToggleSelect: { onToggleSelect(script) },
                                         onFavorite: { onToggleFavorite(script) },
                                         onUpdateTags: { onUpdateTags($0) },
@@ -156,16 +159,23 @@ struct MultiselectScriptGridView: View {
         }
     }
 }
+
 struct MultiselectScriptGridItemView: View {
     let script: ScriptFile
     let isDarkMode: Bool
     let tagsViewModel: TagsViewModel
-    let selectedTag: String? // Nouveau paramètre
+    let selectedTag: String?
+    let isEditMode: Bool
     let onToggleSelect: () -> Void
     let onFavorite: () -> Void
     let onUpdateTags: (ScriptFile) -> Void
-    let onTagClick: ((String) -> Void)?  // Nouveau paramètre
-    let onScriptUpdated: ((ScriptFile) -> Void)? // Nouveau callback pour mise à jour
+    let onTagClick: ((String) -> Void)?
+    let onScriptUpdated: ((ScriptFile) -> Void)?
+    
+    // Constantes pour la taille d'icône uniforme - icône plus grande
+    private let iconContainerSize: CGFloat = 90
+    private let iconSize: CGFloat = 80 // Taille beaucoup plus grande
+    private let tagDotSize: CGFloat = 10 // Taille des pastilles de tag
     
     @State private var scriptIcon: NSImage? = nil
     @State private var hasLoadedIcon: Bool = false
@@ -179,34 +189,6 @@ struct MultiselectScriptGridItemView: View {
             return String(name[..<dotIndex])
         }
         return name
-    }
-    
-    // Obtenir les couleurs des tags pour le script
-    private var tagColors: [Color] {
-        // Si sélectionné, utiliser uniquement la couleur d'accent avec une opacité plus forte
-        if script.isSelected {
-            return [DesignSystem.accentColor(for: isDarkMode).opacity(0.3)]
-        }
-        
-        // Si un tag est sélectionné et que le script a ce tag, mettre en évidence ce tag
-        if let tagName = selectedTag, script.tags.contains(tagName),
-           let tag = tagsViewModel.getTag(name: tagName) {
-            // Utiliser la couleur du tag sélectionné avec une opacité plus élevée
-            return [tag.color.opacity(0.4)]
-        }
-        
-        // Récupérer les couleurs des tags associés au script
-        let colors = script.tags.compactMap { tagName in
-            tagsViewModel.getTag(name: tagName)?.color
-        }
-        
-        // Si pas de tags ou pas de couleurs, retourner la couleur par défaut
-        if colors.isEmpty {
-            return [isDarkMode ? Color(white: 0.2) : Color(white: 0.92)]
-        }
-        
-        // Appliquer l'opacité aux couleurs - augmentée pour plus de contraste
-        return colors.map { $0.opacity(isDarkMode ? 0.4 : 0.35) }
     }
     
     // Détermine si le script doit avoir une bordure spéciale pour le tag sélectionné
@@ -228,51 +210,30 @@ struct MultiselectScriptGridItemView: View {
             : Color.gray.opacity(0.2)
     }
     
-    // Vue personnalisée pour le fond divisé par couleurs de tags
-    private var tagSectionBackground: some View {
-        ZStack {
-            // Cercle de base pour le fond
-            Circle()
-                .fill(isDarkMode ? Color(white: 0.12) : Color(white: 0.9))
-                .frame(width: 80, height: 80)
-                .shadow(color: Color.black.opacity(0.2), radius: 2, x: 0, y: 1)
-            
-            // Superposer les sections pour chaque tag
-            ForEach(0..<tagColors.count, id: \.self) { index in
-                TagSectionShape(
-                    sectionCount: tagColors.count,
-                    sectionIndex: index
-                )
-                .fill(tagColors[index])
-                .frame(width: 80, height: 80)
-            }
-            
-            // Contour pour unifier l'ensemble
-            Circle()
-                .stroke(isDarkMode ? Color.white.opacity(0.1) : Color.black.opacity(0.1), lineWidth: 1)
-                .frame(width: 80, height: 80)
+    // Obtenir les couleurs des tags pour le script
+    private var tagColors: [Color] {
+        script.tags.compactMap { tagName in
+            tagsViewModel.getTag(name: tagName)?.color
         }
     }
     
     var body: some View {
         VStack(alignment: .center, spacing: 0) {
-            // Partie supérieure avec icône centrée
+            // Partie supérieure avec icône centrée (taille uniforme)
             ZStack {
-                // Fond divisé par sections de couleurs de tags
-                tagSectionBackground
-                
-                // Icône du script
+                // Conteneur d'icône de taille fixe
                 if hasLoadedIcon, let icon = scriptIcon {
+                    // Icône redimensionnée uniformément - taille plus grande, sans fond ni ombre
                     Image(nsImage: icon)
                         .resizable()
+                        .interpolation(.high)
                         .aspectRatio(contentMode: .fit)
-                        .frame(width: 45, height: 45)
-                        .shadow(color: Color.black.opacity(0.2), radius: 2, x: 0, y: 1)
+                        .frame(width: iconSize, height: iconSize)
                 } else {
+                    // Icône par défaut si aucune icône n'est chargée - taille plus grande
                     Image(systemName: script.name.hasSuffix(".scpt") ? "applescript" : "doc.text.fill")
-                        .font(.system(size: 30))
+                        .font(.system(size: 60)) // Police plus grande
                         .foregroundColor(DesignSystem.accentColor(for: isDarkMode))
-                        .shadow(color: Color.black.opacity(0.2), radius: 2, x: 0, y: 1)
                 }
                 
                 // Badge de sélection en haut à droite
@@ -289,99 +250,142 @@ struct MultiselectScriptGridItemView: View {
                         .position(x: 70, y: 10)
                 }
                 
-                // Bouton favori interactif en haut à gauche
-                Button(action: onFavorite) {
-                    Circle()
-                        .fill(script.isFavorite ? DesignSystem.favoriteColor() : Color.gray.opacity(0.3))
-                        .frame(width: 24, height: 24)
-                        .overlay(
-                            Image(systemName: "star.fill")
-                                .font(.system(size: 12))
-                                .foregroundColor(script.isFavorite ? .white : Color.gray.opacity(0.7))
-                        )
-                        .shadow(color: Color.black.opacity(0.2), radius: 1, x: 0, y: 1)
-                }
-                .buttonStyle(PlainButtonStyle())
-                .position(x: 10, y: 10)
-                .help(script.isFavorite ? "Retirer des favoris" : "Ajouter aux favoris")
-                
-                // Bouton pour éditer les propriétés (en bas à gauche)
-                Button(action: {
-                    showPropertiesEditor = true
-                }) {
-                    Circle()
-                        .fill(Color.gray.opacity(0.3))
-                        .frame(width: 24, height: 24)
-                        .overlay(
-                            Image(systemName: "square.and.pencil")
-                                .font(.system(size: 10))
-                                .foregroundColor(Color.gray.opacity(0.7))
-                        )
-                        .shadow(color: Color.black.opacity(0.2), radius: 1, x: 0, y: 1)
-                }
-                .buttonStyle(PlainButtonStyle())
-                .position(x: 10, y: 70)
-                .help("Modifier le nom et l'icône")
-                .sheet(isPresented: $showPropertiesEditor) {
-                    ScriptPropertiesEditor(
-                        isPresented: $showPropertiesEditor,
-                        script: script,
-                        isDarkMode: isDarkMode,
-                        onSave: { script, newName, newIcon in
-                            // Appliquer les modifications via ScriptIconManager
-                            ScriptIconManager.applyChanges(for: script, newName: newName, newIcon: newIcon) { result in
-                                // Fermer la fenêtre d'édition
-                                showPropertiesEditor = false
-                                
-                                // Traiter le résultat
-                                switch result {
-                                case .success(let updatedScript):
-                                    // Recharger l'icône si elle a été modifiée
-                                    loadScriptIcon()
-                                    // Passer le script mis à jour au parent
-                                    onScriptUpdated?(updatedScript)
-                                case .failure(let error):
-                                    // Afficher l'erreur
-                                    let alert = NSAlert()
-                                    alert.messageText = "Erreur lors de la modification"
-                                    alert.informativeText = error.localizedDescription
-                                    alert.alertStyle = .critical
-                                    alert.addButton(withTitle: "OK")
-                                    alert.runModal()
+                // Pastilles de couleur pour les tags dans le coin supérieur droit
+                if !script.tags.isEmpty {
+                    HStack(spacing: 3) {
+                        ForEach(Array(tagColors.prefix(3).enumerated()), id: \.offset) { index, color in
+                            Circle()
+                                .fill(color)
+                                .frame(width: tagDotSize, height: tagDotSize)
+                                .overlay(
+                                    Circle()
+                                        .stroke(Color.white.opacity(0.6), lineWidth: 1)
+                                )
+                                .shadow(color: Color.black.opacity(0.2), radius: 1, x: 0, y: 1)
+                                .onTapGesture {
+                                    // Si possible, obtenir le nom du tag à partir de sa couleur
+                                    if let tagName = script.tags.first(where: { name in
+                                        tagsViewModel.getTag(name: name)?.color == color
+                                    }) {
+                                        onTagClick?(tagName)
+                                    }
                                 }
+                        }
+                        // Indicateur "+" si plus de 3 tags
+                        if script.tags.count > 3 {
+                            ZStack {
+                                Circle()
+                                    .fill(Color.gray.opacity(0.3))
+                                    .frame(width: tagDotSize, height: tagDotSize)
+                                Text("+")
+                                    .font(.system(size: 8, weight: .bold))
+                                    .foregroundColor(.white)
                             }
                         }
-                    )
+                    }
+                    .padding(4)
+                    .background(Color.black.opacity(0.2))
+                    .cornerRadius(10)
+                    .position(x: 75, y: 30) // Positionné en haut à droite
                 }
                 
-                // Bouton pour gérer les tags en bas à droite
-                Button(action: {
-                    showTagsEditor = true
-                }) {
-                    Circle()
-                        .fill(!script.tags.isEmpty ? DesignSystem.accentColor(for: isDarkMode) : Color.gray.opacity(0.3))
-                        .frame(width: 24, height: 24)
-                        .overlay(
-                            Image(systemName: "tag.fill")
-                                .font(.system(size: 10))
-                                .foregroundColor(!script.tags.isEmpty ? .white : Color.gray.opacity(0.7))
-                        )
-                        .shadow(color: Color.black.opacity(0.2), radius: 1, x: 0, y: 1)
-                }
-                .buttonStyle(PlainButtonStyle())
-                .position(x: 70, y: 70)
-                .help("Gérer les tags")
-                .sheet(isPresented: $showTagsEditor) {
-                    ScriptTagsEditor(
-                        tagsViewModel: tagsViewModel,
-                        script: script,
-                        isPresented: $showTagsEditor,
-                        isDarkMode: isDarkMode,
-                        onSave: onUpdateTags
-                    )
+                // Colonne de boutons d'édition à gauche - uniquement en mode édition
+                if isEditMode {
+                    VStack(spacing: 8) {
+                        // Bouton favori en haut
+                        Button(action: onFavorite) {
+                            Circle()
+                                .fill(script.isFavorite ? DesignSystem.favoriteColor() : Color.gray.opacity(0.3))
+                                .frame(width: 24, height: 24)
+                                .overlay(
+                                    Image(systemName: "star.fill")
+                                        .font(.system(size: 12))
+                                        .foregroundColor(script.isFavorite ? .white : Color.gray.opacity(0.7))
+                                )
+                                .shadow(color: Color.black.opacity(0.2), radius: 1, x: 0, y: 1)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .help(script.isFavorite ? "Retirer des favoris" : "Ajouter aux favoris")
+                        
+                        // Bouton pour éditer les propriétés (au milieu)
+                        Button(action: {
+                            showPropertiesEditor = true
+                        }) {
+                            Circle()
+                                .fill(Color.gray.opacity(0.3))
+                                .frame(width: 24, height: 24)
+                                .overlay(
+                                    Image(systemName: "square.and.pencil")
+                                        .font(.system(size: 10))
+                                        .foregroundColor(Color.gray.opacity(0.7))
+                                )
+                                .shadow(color: Color.black.opacity(0.2), radius: 1, x: 0, y: 1)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .help("Modifier le nom et l'icône")
+                        .sheet(isPresented: $showPropertiesEditor) {
+                            ScriptPropertiesEditor(
+                                isPresented: $showPropertiesEditor,
+                                script: script,
+                                isDarkMode: isDarkMode,
+                                onSave: { script, newName, newIcon in
+                                    // Appliquer les modifications via ScriptIconManager
+                                    ScriptIconManager.applyChanges(for: script, newName: newName, newIcon: newIcon) { result in
+                                        // Fermer la fenêtre d'édition
+                                        showPropertiesEditor = false
+                                        
+                                        // Traiter le résultat
+                                        switch result {
+                                        case .success(let updatedScript):
+                                            // Recharger l'icône si elle a été modifiée
+                                            loadScriptIcon()
+                                            // Passer le script mis à jour au parent
+                                            onScriptUpdated?(updatedScript)
+                                        case .failure(let error):
+                                            // Afficher l'erreur
+                                            let alert = NSAlert()
+                                            alert.messageText = "Erreur lors de la modification"
+                                            alert.informativeText = error.localizedDescription
+                                            alert.alertStyle = .critical
+                                            alert.addButton(withTitle: "OK")
+                                            alert.runModal()
+                                        }
+                                    }
+                                }
+                            )
+                        }
+                        
+                        // Bouton pour gérer les tags en bas
+                        Button(action: {
+                            showTagsEditor = true
+                        }) {
+                            Circle()
+                                .fill(!script.tags.isEmpty ? DesignSystem.accentColor(for: isDarkMode) : Color.gray.opacity(0.3))
+                                .frame(width: 24, height: 24)
+                                .overlay(
+                                    Image(systemName: "tag.fill")
+                                        .font(.system(size: 10))
+                                        .foregroundColor(!script.tags.isEmpty ? .white : Color.gray.opacity(0.7))
+                                )
+                                .shadow(color: Color.black.opacity(0.2), radius: 1, x: 0, y: 1)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .help("Gérer les tags")
+                        .sheet(isPresented: $showTagsEditor) {
+                            ScriptTagsEditor(
+                                tagsViewModel: tagsViewModel,
+                                script: script,
+                                isPresented: $showTagsEditor,
+                                isDarkMode: isDarkMode,
+                                onSave: onUpdateTags
+                            )
+                        }
+                    }
+                    .padding(.vertical, 5)
+                    .position(x: 15, y: 45) // Positionné au milieu de la colonne gauche
                 }
             }
-            .frame(width: 90, height: 90)
+            .frame(width: iconContainerSize, height: iconContainerSize)
             .padding(.top, 12)
             .padding(.bottom, 8)
             
@@ -393,19 +397,6 @@ struct MultiselectScriptGridItemView: View {
                 .multilineTextAlignment(.center)
                 .frame(width: 140, height: 32)
                 .padding(.bottom, 4)
-            
-            // Tags visuels sous le nom
-            if !script.tags.isEmpty {
-                HStack(spacing: 4) {
-                    ScriptTagsDisplay(
-                        tags: script.tags,
-                        tagsViewModel: tagsViewModel,
-                        onTagClick: onTagClick
-                    )
-                }
-                .frame(height: 12)
-                .padding(.bottom, 4)
-            }
             
             // Date d'exécution
             ZStack {
@@ -490,29 +481,91 @@ struct MultiselectScriptGridItemView: View {
     }
 }
 
-// Forme personnalisée pour créer une section du cercle
-struct TagSectionShape: Shape {
-    let sectionCount: Int
-    let sectionIndex: Int
+// MARK: - Preview
+#Preview("MultiselectScriptGridView - Light Mode") {
+    let tagsViewModel = TagsViewModel()
+    tagsViewModel.addTag(name: "Important", color: .red)
+    tagsViewModel.addTag(name: "Automatisation", color: .blue)
+    tagsViewModel.addTag(name: "Dev", color: .green)
     
-    func path(in rect: CGRect) -> Path {
-        let center = CGPoint(x: rect.midX, y: rect.midY)
-        let radius = min(rect.width, rect.height) / 2
-        
-        // Calculer les angles de début et de fin pour cette section
-        let angleSize = 2 * CGFloat.pi / CGFloat(sectionCount)
-        let startAngle = angleSize * CGFloat(sectionIndex) - CGFloat.pi / 2
-        let endAngle = startAngle + angleSize
-        
-        var path = Path()
-        path.move(to: center)
-        path.addArc(center: center,
-                    radius: radius,
-                    startAngle: Angle(radians: Double(startAngle)),
-                    endAngle: Angle(radians: Double(endAngle)),
-                    clockwise: false)
-        path.closeSubpath()
-        
-        return path
-    }
+    return MultiselectScriptGridView(
+        scripts: [
+            ScriptFile(name: "script1.scpt", path: "/path/1", isFavorite: true, lastExecuted: Date(), isSelected: true, tags: ["Important", "Automatisation", "Dev"]),
+            ScriptFile(name: "script2.applescript", path: "/path/2", isFavorite: false, lastExecuted: nil, isSelected: false),
+            ScriptFile(name: "script3.scpt", path: "/path/3", isFavorite: false, lastExecuted: Date().addingTimeInterval(-3600), isSelected: false, tags: ["Automatisation", "Dev"])
+        ],
+        isDarkMode: false,
+        showFavoritesOnly: false,
+        searchText: "",
+        selectedTag: nil,
+        isEditMode: true,
+        tagsViewModel: tagsViewModel,
+        onToggleSelect: { _ in },
+        onToggleFavorite: { _ in },
+        onUpdateTags: { _ in },
+        onSelectAll: {},
+        onUnselectAll: {},
+        onTagClick: { _ in },
+        onScriptUpdated: { _ in }
+    )
+    .frame(width: 600, height: 400)
+    .background(Color.white)
+}
+
+#Preview("MultiselectScriptGridItemView - Mode édition désactivé") {
+    let tagsViewModel = TagsViewModel()
+    tagsViewModel.addTag(name: "Important", color: .red)
+    tagsViewModel.addTag(name: "Automatisation", color: .blue)
+    tagsViewModel.addTag(name: "Dev", color: .green)
+    
+    return MultiselectScriptGridItemView(
+        script: ScriptFile(
+            name: "test_script.scpt",
+            path: "/Applications/Script Editor.app",
+            isFavorite: true,
+            lastExecuted: Date(),
+            isSelected: false,
+            tags: ["Important", "Automatisation", "Dev"]
+        ),
+        isDarkMode: false,
+        tagsViewModel: tagsViewModel,
+        selectedTag: nil,
+        isEditMode: false,
+        onToggleSelect: {},
+        onFavorite: {},
+        onUpdateTags: { _ in },
+        onTagClick: { _ in },
+        onScriptUpdated: { _ in }
+    )
+    .padding()
+    .background(Color.white)
+}
+
+#Preview("MultiselectScriptGridItemView - Mode édition activé") {
+    let tagsViewModel = TagsViewModel()
+    tagsViewModel.addTag(name: "Important", color: .red)
+    tagsViewModel.addTag(name: "Automatisation", color: .blue)
+    tagsViewModel.addTag(name: "Dev", color: .green)
+    
+    return MultiselectScriptGridItemView(
+        script: ScriptFile(
+            name: "test_script.scpt",
+            path: "/Applications/Script Editor.app",
+            isFavorite: true,
+            lastExecuted: Date(),
+            isSelected: false,
+            tags: ["Important", "Automatisation", "Dev"]
+        ),
+        isDarkMode: false,
+        tagsViewModel: tagsViewModel,
+        selectedTag: nil,
+        isEditMode: true,
+        onToggleSelect: {},
+        onFavorite: {},
+        onUpdateTags: { _ in },
+        onTagClick: { _ in },
+        onScriptUpdated: { _ in }
+    )
+    .padding()
+    .background(Color.white)
 }

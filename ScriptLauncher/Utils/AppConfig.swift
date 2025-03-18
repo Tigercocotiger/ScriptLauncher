@@ -7,6 +7,7 @@
 //  Updated on 10/03/2025. - Added root USB drive resources lookup
 //  Updated on 13/03/2025. - Added support for scripts in Resources folder
 //  Updated on 25/03/2025. - Added method to get config file path
+//  Updated on 29/03/2025. - Added edit mode support
 //
 
 import Foundation
@@ -16,7 +17,8 @@ struct AppConfig: Codable {
     var favorites: Set<String> = []
     var isDarkMode: Bool = false
     var isGridView: Bool = false
-    var lastOpenedFolderPath: String = "/Volumes/Marco/Dév/Fonctionnel"
+    var isEditMode: Bool = true // Nouveau paramètre pour le mode d'édition
+    var lastOpenedFolderPath: String = ""
     var tags: [TagConfig] = [] // Liste des tags disponibles
     var scriptTags: [String: Set<String>] = [:] // Associations script path -> tags
 }
@@ -156,6 +158,14 @@ class ConfigManager {
         }
     }
     
+    var isEditMode: Bool {
+        get { config.isEditMode }
+        set {
+            config.isEditMode = newValue
+            saveConfig()
+        }
+    }
+    
     var folderPath: String {
         get { config.lastOpenedFolderPath }
         set {
@@ -254,7 +264,6 @@ class ConfigManager {
         return scriptsFolderURL.path
     }
     
-    // Initialise le dossier de scripts avec les valeurs par défaut si nécessaire
     // Initialise le dossier de scripts avec les valeurs par défaut si nécessaire
     func initializeScriptsFolder() {
         let scriptsPath = getScriptsFolderPath()

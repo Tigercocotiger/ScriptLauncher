@@ -6,6 +6,7 @@ struct SearchBar: View {
     @Binding var isDarkMode: Bool
     @Binding var showHelp: Bool
     @Binding var isGridView: Bool
+    @Binding var isEditMode: Bool // Nouveau binding pour le mode édition
     @FocusState private var isSearchFieldFocused: Bool
     
     var isFocused: Bool
@@ -13,18 +14,19 @@ struct SearchBar: View {
     
     var body: some View {
         HStack(spacing: DesignSystem.smallSpacing) {
-            // Champ de recherche - maintenant avec taille fixe
+            // Champ de recherche - taille réduite
             HStack {
                 Image(systemName: "magnifyingglass")
                     .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
-                    .padding(.leading, 8)
-                    .frame(width: 30)
+                    .padding(.leading, 6)
+                    .frame(width: 24)
                 
                 ZStack(alignment: .leading) {
                     if searchText.isEmpty {
-                        Text("Rechercher un script...")
+                        Text("Rechercher...")
                             .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
                             .padding(.leading, 4)
+                            .font(.system(size: 13))
                     }
                     
                     TextField("", text: $searchText)
@@ -32,6 +34,7 @@ struct SearchBar: View {
                         .focused($isSearchFieldFocused)
                         .textFieldStyle(PlainTextFieldStyle())
                         .padding(4)
+                        .font(.system(size: 13))
                         .onExitCommand {
                             searchText = ""
                             isSearchFieldFocused = false
@@ -53,14 +56,15 @@ struct SearchBar: View {
                         Button(action: { searchText = "" }) {
                             Image(systemName: "xmark.circle.fill")
                                 .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
+                                .font(.system(size: 13))
                         }
                         .buttonStyle(PlainButtonStyle())
                     }
                 }
-                .frame(width: 30)
-                .padding(.trailing, 8)
+                .frame(width: 24)
+                .padding(.trailing, 6)
             }
-            .frame(height: 36)
+            .frame(height: 32)
             .background(isDarkMode ? Color(white: 0.3) : Color(red: 0.95, green: 0.95, blue: 0.97))
             .cornerRadius(DesignSystem.smallCornerRadius)
             
@@ -70,40 +74,51 @@ struct SearchBar: View {
                 Toggle("", isOn: $showFavoritesOnly)
                     .toggleStyle(StarToggleStyle(isDarkMode: isDarkMode))
                     .help("Afficher uniquement les favoris")
-                    .frame(width: 36)
+                    .frame(width: 32)
+                
+                // Nouveau bouton mode édition
+                Button(action: { isEditMode.toggle() }) {
+                    Image(systemName: isEditMode ? "pencil.slash" : "pencil")
+                        .font(.system(size: 14))
+                        .foregroundColor(isEditMode ? DesignSystem.accentColor(for: isDarkMode) : DesignSystem.textSecondary(for: isDarkMode))
+                }
+                .buttonStyle(IconButtonStyle(isDarkMode: isDarkMode))
+                .help(isEditMode ? "Masquer boutons d'édition" : "Afficher boutons d'édition")
+                .frame(width: 32)
                 
                 // Bouton pour basculer entre liste et grille
                 Button(action: { isGridView.toggle() }) {
                     Image(systemName: isGridView ? "list.bullet" : "square.grid.2x2")
-                        .font(.system(size: 16))
+                        .font(.system(size: 14))
                         .foregroundColor(DesignSystem.accentColor(for: isDarkMode))
                 }
                 .buttonStyle(IconButtonStyle(isDarkMode: isDarkMode))
                 .help(isGridView ? "Passer en vue liste" : "Passer en vue grille")
-                .frame(width: 36)
+                .frame(width: 32)
                 
                 // Bouton mode sombre
                 Button(action: { isDarkMode.toggle() }) {
                     Image(systemName: isDarkMode ? "sun.max.fill" : "moon.fill")
-                        .font(.system(size: 16))
+                        .font(.system(size: 14))
                         .foregroundColor(isDarkMode ? .yellow : .indigo)
                 }
                 .buttonStyle(IconButtonStyle(isDarkMode: isDarkMode))
                 .help("Changer de thème")
-                .frame(width: 36)
+                .frame(width: 32)
                 
                 // Bouton aide
                 Button(action: { showHelp.toggle() }) {
                     Image(systemName: "questionmark.circle")
-                        .font(.system(size: 16))
+                        .font(.system(size: 14))
                         .foregroundColor(DesignSystem.accentColor(for: isDarkMode))
                 }
                 .buttonStyle(IconButtonStyle(isDarkMode: isDarkMode))
                 .help("Afficher l'aide")
-                .frame(width: 36)
+                .frame(width: 32)
             }
         }
-        .padding(DesignSystem.spacing)
+        .padding(.horizontal, DesignSystem.spacing)
+        .padding(.vertical, DesignSystem.smallSpacing)
     }
 }
 
@@ -115,6 +130,7 @@ struct SearchBar: View {
         isDarkMode: .constant(false),
         showHelp: .constant(false),
         isGridView: .constant(false),
+        isEditMode: .constant(true),
         isFocused: false,
         onFocusChange: { _ in }
     )
@@ -129,6 +145,7 @@ struct SearchBar: View {
         isDarkMode: .constant(true),
         showHelp: .constant(false),
         isGridView: .constant(true),
+        isEditMode: .constant(false),
         isFocused: true,
         onFocusChange: { _ in }
     )
