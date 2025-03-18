@@ -1,11 +1,3 @@
-//
-//  TagFilterControl.swift
-//  ScriptLauncher
-//
-//  Created by MacBook14M3P-005 on 16/03/2025.
-//
-
-
 import SwiftUI
 
 struct TagFilterControl: View {
@@ -14,93 +6,168 @@ struct TagFilterControl: View {
     let isDarkMode: Bool
     let scripts: [ScriptFile]
     
+    // État pour suivre la position de défilement
+    @State private var scrollPosition: Int = 0
+    // Référence pour le ScrollViewReader
+    @Namespace private var scrollNamespace
+    
     // Fonction pour calculer le nombre de scripts par tag
     private func scriptCountForTag(_ tagName: String) -> Int {
         return scripts.filter { $0.tags.contains(tagName) }.count
     }
     
+    // Liste filtrée des tags ayant des scripts associés
+    private var activeTags: [Tag] {
+        return tagsViewModel.tags.sorted(by: { $0.name < $1.name })
+            .filter { scriptCountForTag($0.name) > 0 }
+    }
+    
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                // Option "Tous" (aucun tag sélectionné)
+        ZStack {
+            // Background pour le fond
+            if isDarkMode {
+                Color.black.opacity(0.3)
+            } else {
+                Color.gray.opacity(0.05)
+            }
+            
+            // Conteneur principal avec les flèches de navigation et le défilement
+            HStack(spacing: 0) {
+                // Flèche de navigation gauche
                 Button(action: {
-                    selectedTag = nil
-                }) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "tag")
-                            .font(.system(size: 10))
-                        
-                        Text("Tous")
-                            .font(.system(size: 12))
+                    withAnimation {
+                        scrollPosition = max(0, scrollPosition - 300)
                     }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(selectedTag == nil 
-                        ? DesignSystem.accentColor(for: isDarkMode).opacity(0.2)
-                        : (isDarkMode ? Color(white: 0.25) : Color(white: 0.95)))
-                    .cornerRadius(12)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(selectedTag == nil 
-                                ? DesignSystem.accentColor(for: isDarkMode)
-                                : Color.gray.opacity(0.3),
-                                lineWidth: 1)
-                    )
+                }) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(isDarkMode ? .white : .gray)
+                        .frame(width: 24, height: 24)
+                        .background(
+                            Circle()
+                                .fill(isDarkMode ? Color.black.opacity(0.3) : Color.white.opacity(0.7))
+                                .shadow(color: Color.black.opacity(0.1), radius: 1, x: 0, y: 1)
+                        )
                 }
                 .buttonStyle(PlainButtonStyle())
+                .padding(.horizontal, 5) // Marge uniforme horizontale
                 
-                // Liste des tags disponibles
-                ForEach(tagsViewModel.tags.sorted(by: { $0.name < $1.name })) { tag in
-                    let scriptCount = scriptCountForTag(tag.name)
-                    
-                    // Ne pas afficher les tags sans scripts associés
-                    if scriptCount > 0 {
-                        Button(action: {
-                            if selectedTag == tag.name {
-                                selectedTag = nil
-                            } else {
-                                selectedTag = tag.name
-                            }
-                        }) {
-                            HStack(spacing: 4) {
-                                Circle()
-                                    .fill(tag.color)
-                                    .frame(width: 8, height: 8)
+                // Zone de défilement des tags avec GeometryReader pour accéder aux dimensions
+                GeometryReader { geometry in
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        ScrollViewReader { scrollView in
+                            HStack(spacing: 8) {
+                                // Option "Tous" (aucun tag sélectionné)
+                                Button(action: {
+                                    selectedTag = nil
+                                }) {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "tag")
+                                            .font(.system(size: 10))
+                                        
+                                        Text("Tous")
+                                            .font(.system(size: 12))
+                                    }
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(selectedTag == nil
+                                        ? DesignSystem.accentColor(for: isDarkMode).opacity(0.2)
+                                        : (isDarkMode ? Color(white: 0.25) : Color(white: 0.95)))
+                                    .cornerRadius(12)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .stroke(selectedTag == nil
+                                                ? DesignSystem.accentColor(for: isDarkMode)
+                                                : Color.gray.opacity(0.3),
+                                                lineWidth: 1)
+                                    )
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                                .id(0)
                                 
-                                Text(tag.name)
-                                    .font(.system(size: 12))
+                                // Liste des tags disponibles
+                                ForEach(Array(activeTags.enumerated()), id: \.element.id) { index, tag in
+                                    Button(action: {
+                                        if selectedTag == tag.name {
+                                            selectedTag = nil
+                                        } else {
+                                            selectedTag = tag.name
+                                        }
+                                    }) {
+                                        HStack(spacing: 4) {
+                                            Circle()
+                                                .fill(tag.color)
+                                                .frame(width: 8, height: 8)
+                                            
+                                            Text(tag.name)
+                                                .font(.system(size: 12))
+                                            
+                                            // Afficher le compteur de scripts
+                                            TagStatistics(
+                                                tagName: tag.name,
+                                                count: scriptCountForTag(tag.name),
+                                                color: tag.color,
+                                                isDarkMode: isDarkMode
+                                            )
+                                        }
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(selectedTag == tag.name
+                                            ? tag.color.opacity(0.2)
+                                            : (isDarkMode ? Color(white: 0.25) : Color(white: 0.95)))
+                                        .cornerRadius(12)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 12)
+                                                .stroke(selectedTag == tag.name
+                                                    ? tag.color
+                                                    : Color.gray.opacity(0.3),
+                                                    lineWidth: 1)
+                                        )
+                                    }
+                                    .buttonStyle(PlainButtonStyle())
+                                    .id(index + 1)
+                                }
                                 
-                                // Afficher le compteur de scripts
-                                TagStatistics(
-                                    tagName: tag.name,
-                                    count: scriptCount,
-                                    color: tag.color,
-                                    isDarkMode: isDarkMode
-                                )
+                                // Espace de fin pour permettre le défilement jusqu'au dernier élément
+                                Spacer(minLength: 20)
+                                    .id(activeTags.count + 1)
                             }
                             .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(selectedTag == tag.name 
-                                ? tag.color.opacity(0.2)
-                                : (isDarkMode ? Color(white: 0.25) : Color(white: 0.95)))
-                            .cornerRadius(12)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .stroke(selectedTag == tag.name 
-                                        ? tag.color
-                                        : Color.gray.opacity(0.3),
-                                        lineWidth: 1)
-                            )
+                            .padding(.vertical, 6)
+                            .onChange(of: scrollPosition) { newPosition in
+                                withAnimation {
+                                    // Faire défiler vers un élément spécifique basé sur la position
+                                    let safeIndex = min(max(0, newPosition / 100), activeTags.count)
+                                    scrollView.scrollTo(safeIndex, anchor: .leading)
+                                }
+                            }
                         }
-                        .buttonStyle(PlainButtonStyle())
                     }
                 }
+                
+                // Flèche de navigation droite
+                Button(action: {
+                    withAnimation {
+                        // Augmenter la position de défilement
+                        scrollPosition = min(activeTags.count * 100, scrollPosition + 300)
+                    }
+                }) {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(isDarkMode ? .white : .gray)
+                        .frame(width: 24, height: 24)
+                        .background(
+                            Circle()
+                                .fill(isDarkMode ? Color.black.opacity(0.3) : Color.white.opacity(0.7))
+                                .shadow(color: Color.black.opacity(0.1), radius: 1, x: 0, y: 1)
+                        )
+                }
+                .buttonStyle(PlainButtonStyle())
+                .padding(.horizontal, 5) // Marge uniforme horizontale
             }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 6)
         }
-        .background(isDarkMode ? Color.black.opacity(0.3) : Color.gray.opacity(0.05))
         .cornerRadius(DesignSystem.smallCornerRadius)
+        .frame(height: 38)
     }
 }
 
@@ -126,56 +193,4 @@ struct TagStatistics: View {
         .background(color.opacity(0.1))
         .cornerRadius(6)
     }
-}
-
-// MARK: - Preview
-#Preview("TagFilterControl - Light Mode") {
-    let tagsViewModel = TagsViewModel()
-    // Ajouter des tags de test
-    tagsViewModel.addTag(name: "Important", color: .red)
-    tagsViewModel.addTag(name: "Automatisation", color: .blue)
-    tagsViewModel.addTag(name: "Maintenance", color: .green)
-    
-    // Créer des scripts de test
-    let scripts = [
-        ScriptFile(name: "script1.scpt", path: "/path/1", isFavorite: true, lastExecuted: Date(), tags: ["Important"]),
-        ScriptFile(name: "script2.scpt", path: "/path/2", isFavorite: false, lastExecuted: nil, tags: ["Automatisation"]),
-        ScriptFile(name: "script3.scpt", path: "/path/3", isFavorite: false, lastExecuted: Date(), tags: ["Important", "Automatisation"]),
-        ScriptFile(name: "script4.scpt", path: "/path/4", isFavorite: false, lastExecuted: Date(), tags: ["Maintenance"])
-    ]
-    
-    return TagFilterControl(
-        tagsViewModel: tagsViewModel,
-        selectedTag: .constant("Important"),
-        isDarkMode: false,
-        scripts: scripts
-    )
-    .frame(width: 400)
-    .padding()
-}
-
-#Preview("TagFilterControl - Dark Mode") {
-    let tagsViewModel = TagsViewModel()
-    // Ajouter des tags de test
-    tagsViewModel.addTag(name: "Important", color: .red)
-    tagsViewModel.addTag(name: "Automatisation", color: .blue)
-    tagsViewModel.addTag(name: "Maintenance", color: .green)
-    
-    // Créer des scripts de test
-    let scripts = [
-        ScriptFile(name: "script1.scpt", path: "/path/1", isFavorite: true, lastExecuted: Date(), tags: ["Important"]),
-        ScriptFile(name: "script2.scpt", path: "/path/2", isFavorite: false, lastExecuted: nil, tags: ["Automatisation"]),
-        ScriptFile(name: "script3.scpt", path: "/path/3", isFavorite: false, lastExecuted: Date(), tags: ["Important", "Automatisation"]),
-        ScriptFile(name: "script4.scpt", path: "/path/4", isFavorite: false, lastExecuted: Date(), tags: ["Maintenance"])
-    ]
-    
-    return TagFilterControl(
-        tagsViewModel: tagsViewModel,
-        selectedTag: .constant(nil),
-        isDarkMode: true,
-        scripts: scripts
-    )
-    .frame(width: 400)
-    .padding()
-    .background(Color.black)
 }
