@@ -1,11 +1,3 @@
-//
-//  PanelToggleButton.swift
-//  ScriptLauncher
-//
-//  Created by MacBook14M3P-005 on 18/03/2025.
-//
-
-
 import SwiftUI
 
 struct PanelToggleButton: View {
@@ -33,12 +25,13 @@ struct PanelToggleButton: View {
                 // Icône de flèche
                 Image(systemName: isExpanded ? "chevron.right" : "chevron.left")
                     .font(.system(size: 12, weight: .bold))
-                    .foregroundColor(isDarkMode 
-                        ? Color.white.opacity(0.8) 
+                    .foregroundColor(isDarkMode
+                        ? Color.white.opacity(0.8)
                         : DesignSystem.accentColor(for: isDarkMode))
             }
         }
         .buttonStyle(PlainButtonStyle())
+        // Aucun padding supplémentaire pour éviter d'affecter le layout
     }
 }
 

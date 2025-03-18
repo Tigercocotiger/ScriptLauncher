@@ -9,6 +9,10 @@ struct ContentView: View {
     @State private var isResultsPanelExpanded = true // État pour le panneau de résultats
     @State private var resultsPanelWidth: CGFloat = 0 // Stocke la largeur du panneau
     
+    // Constante pour les marges uniformes
+    private let standardMargin: CGFloat = 15
+    private let toggleButtonWidth: CGFloat = 16
+    
     // MARK: - Body
     var body: some View {
         GeometryReader { geometry in
@@ -20,14 +24,11 @@ struct ContentView: View {
                 if geometry.size.width > 700 {
                     // Vue horizontale pour les grandes fenêtres
                     HStack(alignment: .top, spacing: 0) {
-                        // Calcul dynamique des largeurs
-                        let resultsWidth = isResultsPanelExpanded ? (resultsPanelWidth > 0 ? resultsPanelWidth : geometry.size.width * 0.38) : 0
-                        let mainWidth = geometry.size.width - resultsWidth - 40 // Espace constant pour le bouton et les marges
-                        
-                        // Marge constante à gauche
+                        // Marge gauche fixe
                         Spacer()
-                            .frame(width: DesignSystem.spacing)
+                            .frame(width: standardMargin)
                         
+                        // Panel principal pour les scripts
                         ScriptsListPanel(
                             viewModel: viewModel,
                             isSearchFocused: isSearchFieldFocused,
@@ -35,44 +36,45 @@ struct ContentView: View {
                                 isSearchFieldFocused = newValue
                             }
                         )
-                        .frame(width: mainWidth)
+                        .frame(width: calculateMainPanelWidth(totalWidth: geometry.size.width))
                         .id(viewModel.viewRefreshID)
                         .padding(.vertical, DesignSystem.spacing)
                         
-                        // Conteneur ZStack pour garder le bouton visible
-                        ZStack(alignment: .leading) {
-                            // Panneau de résultats avec animation
-                            if isResultsPanelExpanded {
-                                ResultsPanel(viewModel: viewModel)
-                                    .frame(width: resultsWidth)
-                                    .transition(.move(edge: .trailing))
-                                    .padding(.leading, 16) // Espace pour le bouton
-                                    .padding(.vertical, DesignSystem.spacing)
-                                    .background(
-                                        GeometryReader { geo in
-                                            Color.clear
-                                                .preference(key: WidthPreferenceKey.self, value: geo.size.width)
-                                                .onAppear {
-                                                    // Stocker la largeur initiale
-                                                    if resultsPanelWidth == 0 {
-                                                        resultsPanelWidth = geo.size.width
-                                                    }
-                                                }
-                                        }
-                                    )
-                            }
-                            
-                            // Bouton de bascule toujours visible
-                            PanelToggleButton(
-                                isDarkMode: viewModel.isDarkMode,
-                                isExpanded: $isResultsPanelExpanded
-                            )
-                            .padding(.vertical, geometry.size.height / 3)
-                        }
+                        // Bouton de bascule
+                        PanelToggleButton(
+                            isDarkMode: viewModel.isDarkMode,
+                            isExpanded: $isResultsPanelExpanded
+                        )
+                        .padding(.vertical, geometry.size.height / 3)
                         
-                        // Marge constante à droite
-                        Spacer()
-                            .frame(width: DesignSystem.spacing)
+                        // Panneau de résultats avec animation
+                        if isResultsPanelExpanded {
+                            // Espacement entre le bouton et le panneau de résultats
+                            Spacer()
+                                .frame(width: 0) // Pas d'espace supplémentaire après le bouton
+                            
+                            ResultsPanel(viewModel: viewModel)
+                                .frame(width: calculateResultsPanelWidth(totalWidth: geometry.size.width))
+                                .transition(.move(edge: .trailing))
+                                .padding(.vertical, DesignSystem.spacing)
+                                .background(
+                                    GeometryReader { geo in
+                                        Color.clear
+                                            .preference(key: WidthPreferenceKey.self, value: geo.size.width)
+                                            .onAppear {
+                                                // Stocker la largeur initiale
+                                                if resultsPanelWidth == 0 {
+                                                    resultsPanelWidth = geo.size.width
+                                                }
+                                            }
+                                    }
+                                )
+                            
+                            // Marge droite fixe
+                            Spacer()
+                                .frame(width: standardMargin)
+                        } else {
+                        }
                     }
                     .onPreferenceChange(WidthPreferenceKey.self) { width in
                         if width > 0 {
@@ -131,6 +133,25 @@ struct ContentView: View {
                 isDarkMode: viewModel.isDarkMode
             )
         }
+    }
+    
+    // Fonction pour calculer la largeur du panneau principal
+    private func calculateMainPanelWidth(totalWidth: CGFloat) -> CGFloat {
+        if isResultsPanelExpanded {
+            // Quand le panneau est ouvert: environ 55% de l'espace disponible après marges
+            let usableWidth = totalWidth - (standardMargin * 3) - toggleButtonWidth
+            return usableWidth * 0.55
+        } else {
+            // Quand le panneau est fermé: tout l'espace disponible moins marges et bouton
+            return totalWidth - (standardMargin * 2) - toggleButtonWidth
+        }
+    }
+    
+    // Fonction pour calculer la largeur du panneau de résultats
+    private func calculateResultsPanelWidth(totalWidth: CGFloat) -> CGFloat {
+        // Environ 45% de l'espace disponible après marges
+        let usableWidth = totalWidth - (standardMargin * 3) - toggleButtonWidth
+        return usableWidth * 0.45
     }
     
     // MARK: - Configuration des notifications
