@@ -8,6 +8,13 @@ struct ScriptsListPanel: View {
     
     var body: some View {
         VStack(spacing: 0) {
+            // Logo Header avec bouton Configurator intégré
+            LogoHeader(
+                isDarkMode: viewModel.isDarkMode,
+                isConfiguratorEnabled: viewModel.isConfiguratorAvailable,
+                onConfigPressed: viewModel.launchConfiguratorScript
+            )
+            
             SearchBar(
                 searchText: $viewModel.searchText,
                 showFavoritesOnly: $viewModel.showFavoritesOnly,

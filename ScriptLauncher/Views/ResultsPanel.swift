@@ -13,18 +13,7 @@ struct ResultsPanel: View {
     
     var body: some View {
         VStack(spacing: DesignSystem.spacing) {
-            // Bouton de configuration
-            ConfigButton(
-                isDarkMode: viewModel.isDarkMode,
-                isEnabled: viewModel.isConfiguratorAvailable,
-                onConfigPressed: {
-                    // Lancer le script Configurator3000
-                    viewModel.launchConfiguratorScript()
-                    
-                    // Déclencher le feu d'artifice centré
-                    viewModel.showGlobalFirework = true
-                }
-            )
+            // Configurator Button supprimé d'ici
             
             // Section des scripts en cours d'exécution
             RunningScriptsView(

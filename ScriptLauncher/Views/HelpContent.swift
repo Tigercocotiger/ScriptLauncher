@@ -177,5 +177,18 @@ struct HelpContent {
             entre différents ordinateurs ou clés USB.
             """
         ),
+        
+        HelpSection(
+            title: "Interface pliable",
+            content: """
+            Vous pouvez masquer ou afficher le panneau de résultats pour optimiser l'espace de travail :
+            
+            • Cliquez sur la flèche entre les deux panneaux
+            • Utilisez le raccourci ⌘ + P
+            • Sélectionnez "Afficher/masquer panneau de résultats" dans le menu Affichage
+            
+            La taille du panneau est préservée, ce qui permet de retrouver rapidement votre configuration préférée après l'avoir masqué puis réaffiché.
+            """
+        )
     ]
 }

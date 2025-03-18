@@ -6,6 +6,8 @@ struct ContentView: View {
     // MARK: - Properties
     @StateObject private var viewModel = ContentViewModel()
     @FocusState private var isSearchFieldFocused: Bool
+    @State private var isResultsPanelExpanded = true // État pour le panneau de résultats
+    @State private var resultsPanelWidth: CGFloat = 0 // Stocke la largeur du panneau
     
     // MARK: - Body
     var body: some View {
@@ -17,7 +19,15 @@ struct ContentView: View {
                 
                 if geometry.size.width > 700 {
                     // Vue horizontale pour les grandes fenêtres
-                    HStack(alignment: .top, spacing: DesignSystem.spacing) {
+                    HStack(alignment: .top, spacing: 0) {
+                        // Calcul dynamique des largeurs
+                        let resultsWidth = isResultsPanelExpanded ? (resultsPanelWidth > 0 ? resultsPanelWidth : geometry.size.width * 0.38) : 0
+                        let mainWidth = geometry.size.width - resultsWidth - 40 // Espace constant pour le bouton et les marges
+                        
+                        // Marge constante à gauche
+                        Spacer()
+                            .frame(width: DesignSystem.spacing)
+                        
                         ScriptsListPanel(
                             viewModel: viewModel,
                             isSearchFocused: isSearchFieldFocused,
@@ -25,15 +35,50 @@ struct ContentView: View {
                                 isSearchFieldFocused = newValue
                             }
                         )
-                        .frame(width: geometry.size.width * 0.62 - DesignSystem.spacing)
-                        .id(viewModel.viewRefreshID) // Forcer le rechargement lors des modifications de tags
+                        .frame(width: mainWidth)
+                        .id(viewModel.viewRefreshID)
+                        .padding(.vertical, DesignSystem.spacing)
                         
-                        ResultsPanel(viewModel: viewModel)
-                            .padding(.top, 0)
-                            .padding(.trailing, DesignSystem.spacing)
-                            .frame(width: geometry.size.width * 0.38 - DesignSystem.spacing)
+                        // Conteneur ZStack pour garder le bouton visible
+                        ZStack(alignment: .leading) {
+                            // Panneau de résultats avec animation
+                            if isResultsPanelExpanded {
+                                ResultsPanel(viewModel: viewModel)
+                                    .frame(width: resultsWidth)
+                                    .transition(.move(edge: .trailing))
+                                    .padding(.leading, 16) // Espace pour le bouton
+                                    .padding(.vertical, DesignSystem.spacing)
+                                    .background(
+                                        GeometryReader { geo in
+                                            Color.clear
+                                                .preference(key: WidthPreferenceKey.self, value: geo.size.width)
+                                                .onAppear {
+                                                    // Stocker la largeur initiale
+                                                    if resultsPanelWidth == 0 {
+                                                        resultsPanelWidth = geo.size.width
+                                                    }
+                                                }
+                                        }
+                                    )
+                            }
+                            
+                            // Bouton de bascule toujours visible
+                            PanelToggleButton(
+                                isDarkMode: viewModel.isDarkMode,
+                                isExpanded: $isResultsPanelExpanded
+                            )
+                            .padding(.vertical, geometry.size.height / 3)
+                        }
+                        
+                        // Marge constante à droite
+                        Spacer()
+                            .frame(width: DesignSystem.spacing)
                     }
-                    .padding(DesignSystem.spacing)
+                    .onPreferenceChange(WidthPreferenceKey.self) { width in
+                        if width > 0 {
+                            resultsPanelWidth = width
+                        }
+                    }
                 } else {
                     // Vue verticale pour les petites fenêtres
                     VStack(alignment: .leading, spacing: DesignSystem.spacing) {
@@ -109,6 +154,17 @@ struct ContentView: View {
             guard let viewModel = viewModel else { return }
             viewModel.isEditMode.toggle()
         }
+        
+        // Nouvelle notification pour basculer le panneau de résultats
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("ToggleResultsPanel"),
+            object: nil,
+            queue: .main
+        ) { _ in
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                self.isResultsPanelExpanded.toggle()
+            }
+        }
     }
     
     // MARK: - Fonctions
@@ -151,5 +207,13 @@ struct ContentView: View {
                 alert.runModal()
             }
         }
+    }
+}
+
+// Clé de préférence pour capturer la largeur
+struct WidthPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
     }
 }

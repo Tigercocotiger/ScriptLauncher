@@ -182,6 +182,12 @@ La nouvelle fonctionnalité d'édition de propriétés vous permet de :
 - Conserver automatiquement les associations de tags lors du renommage
 - Visualiser un aperçu en temps réel des modifications
 
+### 🌐 Nouvelles fonctionnalités d'interface (Mars 2025)
+
+- **🖼️ Affichage du logo** - Support automatique des thèmes clair/sombre
+- **📱 Interface pliable** - Masquez le panneau de résultats pour gagner de l'espace (⌘P)
+- **🔄 Commandes simplifiées** - Boutons GO et Stop pour plus d'efficacité
+- **📊 Disposition optimisée** - Meilleure organisation spatiale des éléments d'interface
 ## 💻 Développement
 
 ### 🏗️ Architecture

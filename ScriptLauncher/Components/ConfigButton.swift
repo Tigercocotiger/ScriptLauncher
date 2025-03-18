@@ -19,7 +19,7 @@ struct ConfigButton: View {
                 Image(systemName: "gearshape.fill")
                     .font(.system(size: 16))
                 
-                Text("Configuration")
+                Text("Configurator")
                     .font(.system(size: 14, weight: .medium))
             }
             .frame(maxWidth: .infinity)

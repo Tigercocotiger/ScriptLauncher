@@ -48,7 +48,7 @@ struct RunningScriptsView: View {
                             onScriptCancel(script.id)
                         }
                     }) {
-                        Text("Arrêter scripts en cours")
+                        Text("Stop")
                             .font(.caption)
                             .foregroundColor(.red)
                     }

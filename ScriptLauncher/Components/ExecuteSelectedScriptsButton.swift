@@ -26,24 +26,24 @@ struct ExecuteSelectedScriptsButton: View {
             HStack {
                 Image(systemName: "play.fill")
                     .font(.system(size: 16))
-                Text("Exécuter \(selectedScriptsCount) script\(selectedScriptsCount > 1 ? "s" : "")")
+                Text("GO")
                     .font(.headline)
             }
             .frame(maxWidth: .infinity)
             .frame(height: DesignSystem.buttonHeight)
             .background(
                 selectedScriptsCount == 0
-                    ? Color.gray 
+                    ? Color.gray
                     : DesignSystem.accentColor(for: isDarkMode)
             )
             .foregroundColor(.white)
             .cornerRadius(DesignSystem.smallCornerRadius)
             .shadow(
-                color: (selectedScriptsCount == 0) 
-                    ? Color.clear 
+                color: (selectedScriptsCount == 0)
+                    ? Color.clear
                     : DesignSystem.accentColor(for: isDarkMode).opacity(0.3),
-                radius: 4, 
-                x: 0, 
+                radius: 4,
+                x: 0,
                 y: 2
             )
         }

@@ -122,6 +122,14 @@ struct ScriptLauncherApp: App {
                        }
                        .keyboardShortcut("d", modifiers: .command)
                        
+                       Button("Afficher/masquer panneau de résultats") {
+                           NotificationCenter.default.post(
+                               name: NSNotification.Name("ToggleResultsPanel"),
+                               object: nil
+                           )
+                       }
+                       .keyboardShortcut("p", modifiers: .command)
+                       
                        Divider()
                        
                        // Nouveau menu pour le mode d'édition
