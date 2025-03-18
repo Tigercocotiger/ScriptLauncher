@@ -64,9 +64,11 @@ struct TagFilterControl: View {
                                     HStack(spacing: 4) {
                                         Image(systemName: "tag")
                                             .font(.system(size: 10))
+                                            .foregroundColor(isDarkMode ? .white : .black)
                                         
                                         Text("Tous")
                                             .font(.system(size: 12))
+                                            .foregroundColor(isDarkMode ? .white : .black)
                                     }
                                     .padding(.horizontal, 8)
                                     .padding(.vertical, 4)
@@ -101,6 +103,7 @@ struct TagFilterControl: View {
                                             
                                             Text(tag.name)
                                                 .font(.system(size: 12))
+                                                .foregroundColor(isDarkMode ? .white : .black)
                                             
                                             // Afficher le compteur de scripts
                                             TagStatistics(

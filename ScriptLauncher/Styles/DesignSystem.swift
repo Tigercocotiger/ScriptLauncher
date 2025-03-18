@@ -27,7 +27,8 @@ struct DesignSystem {
     }
     
     static func accentColor(for isDarkMode: Bool) -> Color {
-        isDarkMode ? Color.blue : Color.blue
+        // #ff7400 (orange vif)
+        isDarkMode ? Color(red: 1.0, green: 0.455, blue: 0.0) : Color(red: 1.0, green: 0.455, blue: 0.0)
     }
     
     static func favoriteColor() -> Color {
