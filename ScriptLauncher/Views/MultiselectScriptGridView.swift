@@ -218,233 +218,237 @@ struct MultiselectScriptGridItemView: View {
     }
     
     var body: some View {
-        VStack(alignment: .center, spacing: 0) {
-            // Partie supérieure avec icône centrée (taille uniforme)
-            ZStack {
-                // Conteneur d'icône de taille fixe
-                if hasLoadedIcon, let icon = scriptIcon {
-                    // Icône redimensionnée uniformément - taille plus grande, sans fond ni ombre
-                    Image(nsImage: icon)
-                        .resizable()
-                        .interpolation(.high)
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: iconSize, height: iconSize)
-                } else {
-                    // Icône par défaut si aucune icône n'est chargée - taille plus grande
-                    Image(systemName: script.name.hasSuffix(".scpt") ? "applescript" : "doc.text.fill")
-                        .font(.system(size: 60)) // Police plus grande
-                        .foregroundColor(DesignSystem.accentColor(for: isDarkMode))
-                }
-                
-                // Badge de sélection en haut à droite
-                if script.isSelected {
-                    Circle()
-                        .fill(DesignSystem.accentColor(for: isDarkMode))
-                        .frame(width: 24, height: 24)
-                        .overlay(
-                            Image(systemName: "checkmark")
-                                .font(.system(size: 12, weight: .bold))
-                                .foregroundColor(.white)
-                        )
-                        .shadow(color: Color.black.opacity(0.3), radius: 2, x: 0, y: 1)
-                        .position(x: 70, y: 10)
-                }
-                
-                // Pastilles de couleur pour les tags dans le coin supérieur droit
-                if !script.tags.isEmpty {
-                    HStack(spacing: 3) {
-                        ForEach(Array(tagColors.prefix(3).enumerated()), id: \.offset) { index, color in
-                            Circle()
-                                .fill(color)
-                                .frame(width: tagDotSize, height: tagDotSize)
-                                .overlay(
-                                    Circle()
-                                        .stroke(Color.white.opacity(0.6), lineWidth: 1)
-                                )
-                                .shadow(color: Color.black.opacity(0.2), radius: 1, x: 0, y: 1)
-                                .onTapGesture {
-                                    // Si possible, obtenir le nom du tag à partir de sa couleur
-                                    if let tagName = script.tags.first(where: { name in
-                                        tagsViewModel.getTag(name: name)?.color == color
-                                    }) {
-                                        onTagClick?(tagName)
-                                    }
-                                }
-                        }
-                        // Indicateur "+" si plus de 3 tags
-                        if script.tags.count > 3 {
-                            ZStack {
-                                Circle()
-                                    .fill(Color.gray.opacity(0.3))
-                                    .frame(width: tagDotSize, height: tagDotSize)
-                                Text("+")
-                                    .font(.system(size: 8, weight: .bold))
-                                    .foregroundColor(.white)
-                            }
-                        }
+        ZStack(alignment: .topLeading) {
+            // Carte principale
+            VStack(alignment: .center, spacing: 0) {
+                // Partie supérieure avec icône centrée (taille uniforme)
+                ZStack {
+                    // Conteneur d'icône de taille fixe
+                    if hasLoadedIcon, let icon = scriptIcon {
+                        // Icône redimensionnée uniformément - taille plus grande, sans fond ni ombre
+                        Image(nsImage: icon)
+                            .resizable()
+                            .interpolation(.high)
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: iconSize, height: iconSize)
+                    } else {
+                        // Icône par défaut si aucune icône n'est chargée - taille plus grande
+                        Image(systemName: script.name.hasSuffix(".scpt") ? "applescript" : "doc.text.fill")
+                            .font(.system(size: 60)) // Police plus grande
+                            .foregroundColor(DesignSystem.accentColor(for: isDarkMode))
                     }
-                    .padding(4)
-                    .background(Color.black.opacity(0.2))
-                    .cornerRadius(10)
-                    .position(x: 75, y: 30) // Positionné en haut à droite
                 }
+                .frame(width: iconContainerSize, height: iconContainerSize)
+                .padding(.top, 12)
+                .padding(.bottom, 8)
                 
-                // Colonne de boutons d'édition à gauche - uniquement en mode édition
-                if isEditMode {
-                    VStack(spacing: 8) {
-                        // Bouton favori en haut
-                        Button(action: onFavorite) {
-                            Circle()
-                                .fill(script.isFavorite ? DesignSystem.favoriteColor() : Color.gray.opacity(0.3))
-                                .frame(width: 24, height: 24)
-                                .overlay(
-                                    Image(systemName: "star.fill")
-                                        .font(.system(size: 12))
-                                        .foregroundColor(script.isFavorite ? .white : Color.gray.opacity(0.7))
-                                )
-                                .shadow(color: Color.black.opacity(0.2), radius: 1, x: 0, y: 1)
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                        .help(script.isFavorite ? "Retirer des favoris" : "Ajouter aux favoris")
-                        
-                        // Bouton pour éditer les propriétés (au milieu)
-                        Button(action: {
-                            showPropertiesEditor = true
-                        }) {
+                // Nom du script sans extension
+                Text(scriptNameWithoutExtension)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(DesignSystem.textPrimary(for: isDarkMode))
+                    .lineLimit(2)
+                    .multilineTextAlignment(.center)
+                    .frame(width: 140, height: 32)
+                    .padding(.bottom, 4)
+                
+                // Date d'exécution
+                ZStack {
+                    if let lastExec = script.lastExecuted {
+                        Text(timeAgo(from: lastExec))
+                            .font(.caption2)
+                            .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
+                    } else {
+                        Text("Non exécuté")
+                            .font(.caption2)
+                            .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
+                            .opacity(0.6)
+                    }
+                }
+                .frame(height: 16)
+                
+                Spacer()
+            }
+            .frame(width: 160, height: 180)
+            .background(
+                RoundedRectangle(cornerRadius: DesignSystem.smallCornerRadius)
+                    .fill(
+                        isDarkMode
+                        ? (script.isSelected
+                           ? DesignSystem.accentColor(for: isDarkMode).opacity(0.15)
+                           : Color(red: 0.13, green: 0.13, blue: 0.15))
+                        : (script.isSelected
+                           ? DesignSystem.accentColor(for: isDarkMode).opacity(0.08)
+                           : Color(red: 0.97, green: 0.97, blue: 0.98))
+                    )
+                    .shadow(
+                        color: script.isSelected
+                        ? Color.black.opacity(isDarkMode ? 0.3 : 0.15)
+                        : Color.black.opacity(isDarkMode ? 0.2 : 0.08),
+                        radius: 4,
+                        x: 0,
+                        y: 2
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: DesignSystem.smallCornerRadius)
+                            .stroke(
+                                borderColor,
+                                lineWidth: shouldHighlightBorder ? 2 : 1
+                            )
+                    )
+            )
+            .contentShape(Rectangle())
+            .onTapGesture(perform: onToggleSelect)
+            
+            // Badge de sélection en position absolue (haut droit)
+            if script.isSelected {
+                Circle()
+                    .fill(DesignSystem.accentColor(for: isDarkMode))
+                    .frame(width: 24, height: 24)
+                    .overlay(
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundColor(.white)
+                    )
+                    .shadow(color: Color.black.opacity(0.3), radius: 2, x: 0, y: 1)
+                    .position(x: 139, y: 15) // Position centrée entre l'icône et le bord
+            }
+            
+            // Pastilles de couleur pour les tags dans le coin supérieur droit SUR LA BORDURE
+            if !script.tags.isEmpty {
+                VStack(spacing: 3) {
+                    ForEach(Array(tagColors.prefix(3).enumerated()), id: \.offset) { index, color in
+                        Circle()
+                            .fill(color)
+                            .frame(width: tagDotSize, height: tagDotSize)
+                            .overlay(
+                                Circle()
+                                    .stroke(Color.white.opacity(0.6), lineWidth: 1)
+                            )
+                            .shadow(color: Color.black.opacity(0.2), radius: 1, x: 0, y: 1)
+                            .onTapGesture {
+                                // Si possible, obtenir le nom du tag à partir de sa couleur
+                                if let tagName = script.tags.first(where: { name in
+                                    tagsViewModel.getTag(name: name)?.color == color
+                                }) {
+                                    onTagClick?(tagName)
+                                }
+                            }
+                    }
+                    // Indicateur "+" si plus de 3 tags
+                    if script.tags.count > 3 {
+                        ZStack {
                             Circle()
                                 .fill(Color.gray.opacity(0.3))
-                                .frame(width: 24, height: 24)
-                                .overlay(
-                                    Image(systemName: "square.and.pencil")
-                                        .font(.system(size: 10))
-                                        .foregroundColor(Color.gray.opacity(0.7))
-                                )
-                                .shadow(color: Color.black.opacity(0.2), radius: 1, x: 0, y: 1)
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                        .help("Modifier le nom et l'icône")
-                        .sheet(isPresented: $showPropertiesEditor) {
-                            ScriptPropertiesEditor(
-                                isPresented: $showPropertiesEditor,
-                                script: script,
-                                isDarkMode: isDarkMode,
-                                onSave: { script, newName, newIcon in
-                                    // Appliquer les modifications via ScriptIconManager
-                                    ScriptIconManager.applyChanges(for: script, newName: newName, newIcon: newIcon) { result in
-                                        // Fermer la fenêtre d'édition
-                                        showPropertiesEditor = false
-                                        
-                                        // Traiter le résultat
-                                        switch result {
-                                        case .success(let updatedScript):
-                                            // Recharger l'icône si elle a été modifiée
-                                            loadScriptIcon()
-                                            // Passer le script mis à jour au parent
-                                            onScriptUpdated?(updatedScript)
-                                        case .failure(let error):
-                                            // Afficher l'erreur
-                                            let alert = NSAlert()
-                                            alert.messageText = "Erreur lors de la modification"
-                                            alert.informativeText = error.localizedDescription
-                                            alert.alertStyle = .critical
-                                            alert.addButton(withTitle: "OK")
-                                            alert.runModal()
-                                        }
-                                    }
-                                }
-                            )
-                        }
-                        
-                        // Bouton pour gérer les tags en bas
-                        Button(action: {
-                            showTagsEditor = true
-                        }) {
-                            Circle()
-                                .fill(!script.tags.isEmpty ? DesignSystem.accentColor(for: isDarkMode) : Color.gray.opacity(0.3))
-                                .frame(width: 24, height: 24)
-                                .overlay(
-                                    Image(systemName: "tag.fill")
-                                        .font(.system(size: 10))
-                                        .foregroundColor(!script.tags.isEmpty ? .white : Color.gray.opacity(0.7))
-                                )
-                                .shadow(color: Color.black.opacity(0.2), radius: 1, x: 0, y: 1)
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                        .help("Gérer les tags")
-                        .sheet(isPresented: $showTagsEditor) {
-                            ScriptTagsEditor(
-                                tagsViewModel: tagsViewModel,
-                                script: script,
-                                isPresented: $showTagsEditor,
-                                isDarkMode: isDarkMode,
-                                onSave: onUpdateTags
-                            )
+                                .frame(width: tagDotSize, height: tagDotSize)
+                            Text("+")
+                                .font(.system(size: 8, weight: .bold))
+                                .foregroundColor(.white)
                         }
                     }
-                    .padding(.vertical, 5)
-                    .position(x: 15, y: 45) // Positionné au milieu de la colonne gauche
                 }
+                .padding(4)
+                .background(Color.black.opacity(0.2))
+                .cornerRadius(10)
+                .position(x: 135, y: 50) // Position centrée entre l'icône et le bord
             }
-            .frame(width: iconContainerSize, height: iconContainerSize)
-            .padding(.top, 12)
-            .padding(.bottom, 8)
             
-            // Nom du script sans extension
-            Text(scriptNameWithoutExtension)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundColor(DesignSystem.textPrimary(for: isDarkMode))
-                .lineLimit(2)
-                .multilineTextAlignment(.center)
-                .frame(width: 140, height: 32)
-                .padding(.bottom, 4)
-            
-            // Date d'exécution
-            ZStack {
-                if let lastExec = script.lastExecuted {
-                    Text(timeAgo(from: lastExec))
-                        .font(.caption2)
-                        .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
-                } else {
-                    Text("Non exécuté")
-                        .font(.caption2)
-                        .foregroundColor(DesignSystem.textSecondary(for: isDarkMode))
-                        .opacity(0.6)
-                }
-            }
-            .frame(height: 16)
-            
-            Spacer()
-        }
-        .frame(width: 160, height: 180)
-        .background(
-            RoundedRectangle(cornerRadius: DesignSystem.smallCornerRadius)
-                .fill(
-                    isDarkMode
-                    ? (script.isSelected
-                       ? DesignSystem.accentColor(for: isDarkMode).opacity(0.15)
-                       : Color(red: 0.13, green: 0.13, blue: 0.15))
-                    : (script.isSelected
-                       ? DesignSystem.accentColor(for: isDarkMode).opacity(0.08)
-                       : Color(red: 0.97, green: 0.97, blue: 0.98))
-                )
-                .shadow(
-                    color: script.isSelected
-                    ? Color.black.opacity(isDarkMode ? 0.3 : 0.15)
-                    : Color.black.opacity(isDarkMode ? 0.2 : 0.08),
-                    radius: 4,
-                    x: 0,
-                    y: 2
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: DesignSystem.smallCornerRadius)
-                        .stroke(
-                            borderColor,
-                            lineWidth: shouldHighlightBorder ? 2 : 1
+            // Colonne de boutons d'édition à gauche - uniquement en mode édition - SUR LA BORDURE
+            if isEditMode {
+                VStack(spacing: 8) {
+                    // Bouton favori en haut
+                    Button(action: onFavorite) {
+                        Circle()
+                            .fill(script.isFavorite ? DesignSystem.favoriteColor() : Color.gray.opacity(0.3))
+                            .frame(width: 24, height: 24)
+                            .overlay(
+                                Image(systemName: "star.fill")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(script.isFavorite ? .white : Color.gray.opacity(0.7))
+                            )
+                            .shadow(color: Color.black.opacity(0.2), radius: 1, x: 0, y: 1)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .help(script.isFavorite ? "Retirer des favoris" : "Ajouter aux favoris")
+                    
+                    // Bouton pour éditer les propriétés (au milieu)
+                    Button(action: {
+                        showPropertiesEditor = true
+                    }) {
+                        Circle()
+                            .fill(Color.gray.opacity(0.3))
+                            .frame(width: 24, height: 24)
+                            .overlay(
+                                Image(systemName: "square.and.pencil")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(Color.gray.opacity(0.7))
+                            )
+                            .shadow(color: Color.black.opacity(0.2), radius: 1, x: 0, y: 1)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .help("Modifier le nom et l'icône")
+                    .sheet(isPresented: $showPropertiesEditor) {
+                        ScriptPropertiesEditor(
+                            isPresented: $showPropertiesEditor,
+                            script: script,
+                            isDarkMode: isDarkMode,
+                            onSave: { script, newName, newIcon in
+                                // Appliquer les modifications via ScriptIconManager
+                                ScriptIconManager.applyChanges(for: script, newName: newName, newIcon: newIcon) { result in
+                                    // Fermer la fenêtre d'édition
+                                    showPropertiesEditor = false
+                                    
+                                    // Traiter le résultat
+                                    switch result {
+                                    case .success(let updatedScript):
+                                        // Recharger l'icône si elle a été modifiée
+                                        loadScriptIcon()
+                                        // Passer le script mis à jour au parent
+                                        onScriptUpdated?(updatedScript)
+                                    case .failure(let error):
+                                        // Afficher l'erreur
+                                        let alert = NSAlert()
+                                        alert.messageText = "Erreur lors de la modification"
+                                        alert.informativeText = error.localizedDescription
+                                        alert.alertStyle = .critical
+                                        alert.addButton(withTitle: "OK")
+                                        alert.runModal()
+                                    }
+                                }
+                            }
                         )
-                )
-        )
-        .contentShape(Rectangle())
-        .onTapGesture(perform: onToggleSelect)
+                    }
+                    
+                    // Bouton pour gérer les tags en bas
+                    Button(action: {
+                        showTagsEditor = true
+                    }) {
+                        Circle()
+                            .fill(!script.tags.isEmpty ? DesignSystem.accentColor(for: isDarkMode) : Color.gray.opacity(0.3))
+                            .frame(width: 24, height: 24)
+                            .overlay(
+                                Image(systemName: "tag.fill")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(!script.tags.isEmpty ? .white : Color.gray.opacity(0.7))
+                            )
+                            .shadow(color: Color.black.opacity(0.2), radius: 1, x: 0, y: 1)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .help("Gérer les tags")
+                    .sheet(isPresented: $showTagsEditor) {
+                        ScriptTagsEditor(
+                            tagsViewModel: tagsViewModel,
+                            script: script,
+                            isPresented: $showTagsEditor,
+                            isDarkMode: isDarkMode,
+                            onSave: onUpdateTags
+                        )
+                    }
+                }
+                .padding(.vertical, 5)
+                .padding(.leading, 8) // Ajout d'un padding à gauche des boutons
+                .position(x: 17, y: 60) // Position centrée entre la bordure de l'icône et le bord gauche
+            }
+        }
         .onAppear {
             loadScriptIcon()
         }

@@ -4,6 +4,7 @@
 //
 //  Created by MacBook-16/M1P-001 on 10/03/2025.
 //  Updated on 23/03/2025. - Added script properties editing
+//  Updated on 30/03/2025. - Added edit mode section
 //
 
 
@@ -21,11 +22,34 @@ struct HelpContent {
             • ⌘ + S : Ajouter/retirer des favoris
             • ⌘ + G : Basculer entre vue liste et grille
             • ⌘ + D : Basculer entre mode clair et sombre
+            • ⌘ + E : Activer/désactiver le mode d'édition
             • ⌘ + . : Arrêter tous les scripts en cours
             • ⌘ + ⇧ + N : Créer un installateur DMG
+            • ⌘ + ⇧ + C : Nettoyer la configuration
             • Échap : Annuler la recherche ou fermer l'aide
             """
         ),
+        
+        HelpSection(
+            title: "Mode d'édition",
+            content: """
+            Le mode d'édition permet de personnaliser rapidement vos scripts :
+            
+            • Activez ou désactivez le mode en cliquant sur l'icône de crayon dans la barre de recherche
+            • Utilisez le raccourci ⌘ + E pour basculer le mode d'édition
+            • En mode édition, des boutons apparaissent sur les bordures des cartes :
+              - Étoile : marquer comme favori
+              - Crayon : modifier nom et icône
+              - Étiquette : gérer les tags
+            
+            Ces boutons sont positionnés sur les bordures pour préserver la visibilité des icônes.
+            Vous pouvez désactiver ce mode pour une interface plus épurée, particulièrement utile 
+            sur les petits écrans.
+            
+            Le mode d'édition est automatiquement sauvegardé dans vos préférences.
+            """
+        ),
+        
         HelpSection(
             title: "Personnalisation des scripts",
             content: """
@@ -41,6 +65,7 @@ struct HelpContent {
             Note : La modification s'applique uniquement à l'apparence du fichier, pas à son contenu.
             """
         ),
+        
         HelpSection(
             title: "Sélection multiple",
             content: """
@@ -54,6 +79,7 @@ struct HelpContent {
             La sélection multiple vous permet d'automatiser plusieurs tâches simultanément.
             """
         ),
+        
         HelpSection(
             title: "Gestion des tags",
             content: """
@@ -62,10 +88,13 @@ struct HelpContent {
             1. Cliquez sur l'icône de tag à côté d'un script pour ajouter ou modifier ses tags
             2. Vous pouvez créer de nouveaux tags avec des couleurs personnalisées
             3. Utilisez les tags pour identifier rapidement les types de scripts
+            4. Filtrez vos scripts en cliquant sur un tag dans la barre de filtres
+            5. Les pastilles de couleur affichées sur les cartes indiquent les tags associés
             
             Les tags sont automatiquement sauvegardés et conservés entre les sessions.
             """
         ),
+        
         HelpSection(
             title: "Créateur d'installateur DMG",
             content: """
@@ -79,6 +108,7 @@ struct HelpContent {
             Le script créé sera automatiquement disponible dans la liste des scripts.
             """
         ),
+        
         HelpSection(
             title: "Gestion des favoris",
             content: """
@@ -92,6 +122,7 @@ struct HelpContent {
             Les favoris sont automatiquement sauvegardés dans les préférences de l'application.
             """
         ),
+        
         HelpSection(
             title: "Scripts en cours d'exécution",
             content: """
@@ -106,6 +137,7 @@ struct HelpContent {
             🟠 En cours  🟢 Terminé  🔴 Erreur
             """
         ),
+        
         HelpSection(
             title: "Recherche et filtrage",
             content: """
@@ -118,6 +150,7 @@ struct HelpContent {
             Le résultat de la recherche s'affiche instantanément dans la liste des scripts.
             """
         ),
+        
         HelpSection(
             title: "Dossier cible",
             content: """
@@ -128,6 +161,20 @@ struct HelpContent {
             
             Le chemin du dossier est sauvegardé avec l'application et sera conservé même si vous 
             déplacez l'application sur une clé USB.
+            """
+        ),
+        
+        HelpSection(
+            title: "Nettoyage de la configuration",
+            content: """
+            Pour assurer la portabilité de vos scripts et tags :
+            
+            1. Utilisez l'option "Nettoyer la configuration" dans le menu Outils (⌘⇧C)
+            2. Cette fonction simplifie les chemins absolus dans votre configuration
+            3. Les références aux scripts utilisent désormais uniquement les noms de fichiers
+            
+            Cette fonction est particulièrement utile lorsque vous déplacez l'application
+            entre différents ordinateurs ou clés USB.
             """
         ),
     ]

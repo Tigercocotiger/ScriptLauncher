@@ -56,11 +56,28 @@ Pour changer le dossier cible des scripts :
 - `⌘ + S` : Ajouter/retirer des favoris
 - `⌘ + G` : Basculer entre vue liste et grille
 - `⌘ + D` : Basculer entre mode clair et sombre
+- `⌘ + E` : Activer/désactiver le mode d'édition
 - `⌘ + I` : Afficher/masquer l'aide
 - `⌘ + .` : Arrêter tous les scripts en cours
 - `⌘ + ⇧ + N` : Créer un installateur DMG
 - `⌘ + ⇧ + C` : Nettoyer la configuration des chemins
 - `Échap` : Annuler la recherche
+
+### ⚙️ Mode d'édition
+
+Le mode d'édition permet de personnaliser vos scripts plus facilement :
+
+1. Activez ou désactivez le mode d'édition via le bouton crayon dans la barre d'outils ou en utilisant `⌘ + E`
+2. En mode édition, chaque script affiche des boutons supplémentaires sur les bordures :
+   - Étoile : ajouter/retirer des favoris
+   - Crayon : modifier le nom et l'icône du script
+   - Étiquette : gérer les tags associés au script
+3. Ces boutons sont positionnés sur les bordures des cartes pour éviter de perturber l'affichage des icônes
+4. En mode grille, les pastilles de couleur à droite indiquent les tags associés au script
+
+Le mode d'édition peut être désactivé pour une interface plus épurée, particulièrement utile sur les écrans de petite taille.
+
+Votre préférence pour le mode d'édition est automatiquement sauvegardée entre les sessions.
 
 ### 📋 Sélection multiple
 
