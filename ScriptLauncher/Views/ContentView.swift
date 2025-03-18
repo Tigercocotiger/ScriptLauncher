@@ -58,6 +58,7 @@ struct ContentView: View {
         }
         .onAppear {
             viewModel.initialize()
+            setupNotifications()
         }
         .onReceive(Just(viewModel.isDarkMode)) { newValue in
             // Sauvegarde la préférence de thème
@@ -81,18 +82,60 @@ struct ContentView: View {
                 isDarkMode: viewModel.isDarkMode
             )
         }
-
     }
-}
-
-// MARK: - Preview
-#Preview("Content View - Multi Select") {
-    ContentView()
-        .frame(width: 1000, height: 650)
-}
-
-#Preview("Content View - Dark Mode") {
-    ContentView()
-        .frame(width: 1000, height: 650)
-        .preferredColorScheme(.dark)
+    
+    // MARK: - Configuration des notifications
+    private func setupNotifications() {
+        // Écouter la commande de changement de dossier
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("ChangeFolderCommand"),
+            object: nil,
+            queue: .main
+        ) { [weak viewModel] _ in
+            guard let viewModel = viewModel else { return }
+            changeFolderTarget(viewModel: viewModel)
+        }
+    }
+    
+    // MARK: - Fonctions
+    private func changeFolderTarget(viewModel: ContentViewModel) {
+        let openPanel = NSOpenPanel()
+        openPanel.canChooseFiles = false
+        openPanel.canChooseDirectories = true
+        openPanel.allowsMultipleSelection = false
+        
+        // Commencer dans le dossier actuel si possible
+        let resolvedPath = ConfigManager.shared.resolveRelativePath(viewModel.targetFolderPath)
+        if let url = URL(string: "file://" + resolvedPath), FileManager.default.fileExists(atPath: resolvedPath) {
+            openPanel.directoryURL = url
+        }
+        
+        openPanel.message = "Sélectionnez un dossier contenant des scripts AppleScript"
+        openPanel.prompt = "Sélectionner"
+        
+        if openPanel.runModal() == .OK, let url = openPanel.url {
+            // Vérifier que le dossier contient des scripts
+            if ConfigManager.shared.isValidScriptFolder(url.path) {
+                // Convertir en chemin relatif si possible pour le stockage
+                let pathToStore = ConfigManager.shared.convertToRelativePath(url.path) ?? url.path
+                
+                // Mettre à jour le chemin dans ConfigManager
+                ConfigManager.shared.folderPath = pathToStore
+                
+                // Mettre à jour l'état local
+                viewModel.targetFolderPath = pathToStore
+                
+                // Recharger les scripts
+                viewModel.loadScripts()
+            } else {
+                // Afficher une alerte si le dossier ne contient pas de scripts
+                let alert = NSAlert()
+                alert.messageText = "Dossier invalide"
+                alert.informativeText = "Le dossier sélectionné ne contient pas de scripts (.scpt ou .applescript). Veuillez choisir un autre dossier."
+                alert.alertStyle = .warning
+                alert.addButton(withTitle: "OK")
+                alert.runModal()
+            }
+        }
+    }
 }

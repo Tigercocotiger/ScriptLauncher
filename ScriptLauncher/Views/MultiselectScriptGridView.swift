@@ -49,9 +49,11 @@ struct MultiselectScriptGridView: View {
     
     // Définir le nombre de colonnes avec taille fixe
     private let columns = [
-        GridItem(.adaptive(minimum: 160, maximum: 160), spacing: 16)
+        GridItem(.adaptive(minimum: 160, maximum: 160), spacing: 20)
     ]
     
+    // Cette modification concerne la structure MultiselectScriptGridView
+
     var body: some View {
         VStack(spacing: 0) {
             // Barre d'actions de sélection
@@ -117,31 +119,43 @@ struct MultiselectScriptGridView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                ScrollView {
-                    LazyVGrid(columns: columns, spacing: 16) {
-                        ForEach(filteredScripts) { script in
-                            MultiselectScriptGridItemView(
-                                script: script,
-                                isDarkMode: isDarkMode,
-                                tagsViewModel: tagsViewModel,
-                                selectedTag: selectedTag,
-                                onToggleSelect: { onToggleSelect(script) },
-                                onFavorite: { onToggleFavorite(script) },
-                                onUpdateTags: { onUpdateTags($0) },
-                                onTagClick: onTagClick,
-                                onScriptUpdated: onScriptUpdated
-                            )
-                            .frame(width: 160, height: 180)
+                // Fond coloré pour la zone de défilement
+                ZStack {
+                    // Fond
+                    (isDarkMode ? Color.black.opacity(0.1) : Color.gray.opacity(0.03))
+                        .ignoresSafeArea()
+                    
+                    VStack(spacing: 0) {
+                        // Espace fixe en haut - même pour toutes les vues
+                        Spacer()
+                            .frame(height: 16)
+                        
+                        // La grille elle-même avec padding fixe
+                        ScrollView {
+                            LazyVGrid(columns: columns, spacing: 20) {
+                                ForEach(filteredScripts) { script in
+                                    MultiselectScriptGridItemView(
+                                        script: script,
+                                        isDarkMode: isDarkMode,
+                                        tagsViewModel: tagsViewModel,
+                                        selectedTag: selectedTag,
+                                        onToggleSelect: { onToggleSelect(script) },
+                                        onFavorite: { onToggleFavorite(script) },
+                                        onUpdateTags: { onUpdateTags($0) },
+                                        onTagClick: onTagClick,
+                                        onScriptUpdated: onScriptUpdated
+                                    )
+                                    .frame(width: 160, height: 180)
+                                }
+                            }
+                            .padding([.horizontal, .bottom], DesignSystem.spacing)
                         }
                     }
-                    .padding(.vertical, DesignSystem.spacing)
-                    .padding(.horizontal, DesignSystem.spacing)
                 }
             }
         }
     }
 }
-
 struct MultiselectScriptGridItemView: View {
     let script: ScriptFile
     let isDarkMode: Bool
@@ -169,16 +183,16 @@ struct MultiselectScriptGridItemView: View {
     
     // Obtenir les couleurs des tags pour le script
     private var tagColors: [Color] {
-        // Si sélectionné, utiliser uniquement la couleur d'accent
+        // Si sélectionné, utiliser uniquement la couleur d'accent avec une opacité plus forte
         if script.isSelected {
-            return [DesignSystem.accentColor(for: isDarkMode).opacity(0.2)]
+            return [DesignSystem.accentColor(for: isDarkMode).opacity(0.3)]
         }
         
         // Si un tag est sélectionné et que le script a ce tag, mettre en évidence ce tag
         if let tagName = selectedTag, script.tags.contains(tagName),
            let tag = tagsViewModel.getTag(name: tagName) {
             // Utiliser la couleur du tag sélectionné avec une opacité plus élevée
-            return [tag.color.opacity(0.3)]
+            return [tag.color.opacity(0.4)]
         }
         
         // Récupérer les couleurs des tags associés au script
@@ -188,11 +202,11 @@ struct MultiselectScriptGridItemView: View {
         
         // Si pas de tags ou pas de couleurs, retourner la couleur par défaut
         if colors.isEmpty {
-            return [isDarkMode ? Color(white: 0.25) : Color(white: 0.95)]
+            return [isDarkMode ? Color(white: 0.2) : Color(white: 0.92)]
         }
         
-        // Appliquer l'opacité aux couleurs
-        return colors.map { $0.opacity(isDarkMode ? 0.3 : 0.2) }
+        // Appliquer l'opacité aux couleurs - augmentée pour plus de contraste
+        return colors.map { $0.opacity(isDarkMode ? 0.4 : 0.35) }
     }
     
     // Détermine si le script doit avoir une bordure spéciale pour le tag sélectionné
@@ -219,8 +233,9 @@ struct MultiselectScriptGridItemView: View {
         ZStack {
             // Cercle de base pour le fond
             Circle()
-                .fill(isDarkMode ? Color(white: 0.2) : Color(white: 0.93))
+                .fill(isDarkMode ? Color(white: 0.12) : Color(white: 0.9))
                 .frame(width: 80, height: 80)
+                .shadow(color: Color.black.opacity(0.2), radius: 2, x: 0, y: 1)
             
             // Superposer les sections pour chaque tag
             ForEach(0..<tagColors.count, id: \.self) { index in
@@ -234,7 +249,7 @@ struct MultiselectScriptGridItemView: View {
             
             // Contour pour unifier l'ensemble
             Circle()
-                .stroke(Color.gray.opacity(0.15), lineWidth: 1)
+                .stroke(isDarkMode ? Color.white.opacity(0.1) : Color.black.opacity(0.1), lineWidth: 1)
                 .frame(width: 80, height: 80)
         }
     }
@@ -252,10 +267,12 @@ struct MultiselectScriptGridItemView: View {
                         .resizable()
                         .aspectRatio(contentMode: .fit)
                         .frame(width: 45, height: 45)
+                        .shadow(color: Color.black.opacity(0.2), radius: 2, x: 0, y: 1)
                 } else {
                     Image(systemName: script.name.hasSuffix(".scpt") ? "applescript" : "doc.text.fill")
                         .font(.system(size: 30))
                         .foregroundColor(DesignSystem.accentColor(for: isDarkMode))
+                        .shadow(color: Color.black.opacity(0.2), radius: 2, x: 0, y: 1)
                 }
                 
                 // Badge de sélection en haut à droite
@@ -268,6 +285,7 @@ struct MultiselectScriptGridItemView: View {
                                 .font(.system(size: 12, weight: .bold))
                                 .foregroundColor(.white)
                         )
+                        .shadow(color: Color.black.opacity(0.3), radius: 2, x: 0, y: 1)
                         .position(x: 70, y: 10)
                 }
                 
@@ -281,6 +299,7 @@ struct MultiselectScriptGridItemView: View {
                                 .font(.system(size: 12))
                                 .foregroundColor(script.isFavorite ? .white : Color.gray.opacity(0.7))
                         )
+                        .shadow(color: Color.black.opacity(0.2), radius: 1, x: 0, y: 1)
                 }
                 .buttonStyle(PlainButtonStyle())
                 .position(x: 10, y: 10)
@@ -298,6 +317,7 @@ struct MultiselectScriptGridItemView: View {
                                 .font(.system(size: 10))
                                 .foregroundColor(Color.gray.opacity(0.7))
                         )
+                        .shadow(color: Color.black.opacity(0.2), radius: 1, x: 0, y: 1)
                 }
                 .buttonStyle(PlainButtonStyle())
                 .position(x: 10, y: 70)
@@ -346,6 +366,7 @@ struct MultiselectScriptGridItemView: View {
                                 .font(.system(size: 10))
                                 .foregroundColor(!script.tags.isEmpty ? .white : Color.gray.opacity(0.7))
                         )
+                        .shadow(color: Color.black.opacity(0.2), radius: 1, x: 0, y: 1)
                 }
                 .buttonStyle(PlainButtonStyle())
                 .position(x: 70, y: 70)
@@ -406,9 +427,23 @@ struct MultiselectScriptGridItemView: View {
         .frame(width: 160, height: 180)
         .background(
             RoundedRectangle(cornerRadius: DesignSystem.smallCornerRadius)
-                .fill(script.isSelected
-                      ? DesignSystem.accentColor(for: isDarkMode).opacity(isDarkMode ? 0.3 : 0.1)
-                      : DesignSystem.cardBackground(for: isDarkMode))
+                .fill(
+                    isDarkMode
+                    ? (script.isSelected
+                       ? DesignSystem.accentColor(for: isDarkMode).opacity(0.15)
+                       : Color(red: 0.13, green: 0.13, blue: 0.15))
+                    : (script.isSelected
+                       ? DesignSystem.accentColor(for: isDarkMode).opacity(0.08)
+                       : Color(red: 0.97, green: 0.97, blue: 0.98))
+                )
+                .shadow(
+                    color: script.isSelected
+                    ? Color.black.opacity(isDarkMode ? 0.3 : 0.15)
+                    : Color.black.opacity(isDarkMode ? 0.2 : 0.08),
+                    radius: 4,
+                    x: 0,
+                    y: 2
+                )
                 .overlay(
                     RoundedRectangle(cornerRadius: DesignSystem.smallCornerRadius)
                         .stroke(

@@ -255,8 +255,13 @@ class ConfigManager {
     }
     
     // Initialise le dossier de scripts avec les valeurs par défaut si nécessaire
+    // Initialise le dossier de scripts avec les valeurs par défaut si nécessaire
     func initializeScriptsFolder() {
         let scriptsPath = getScriptsFolderPath()
+        
+        // Vérifier si le dossier actuel existe et est valide avant de le remplacer
+        let currentPath = resolveRelativePath(config.lastOpenedFolderPath)
+        let isCurrentPathValid = FileManager.default.fileExists(atPath: currentPath) && isValidScriptFolder(currentPath)
         
         // Si le dossier de scripts est vide, proposer de copier des scripts depuis le dossier par défaut
         let fileManager = FileManager.default
@@ -286,9 +291,14 @@ class ConfigManager {
             print("Erreur lors de la vérification du dossier de scripts: \(error)")
         }
         
-        // Mettre à jour le chemin de dossier par défaut
-        config.lastOpenedFolderPath = scriptsPath
-        saveConfig()
+        // Ne mettre à jour le chemin de dossier par défaut que si le dossier actuel n'est pas valide
+        if !isCurrentPathValid {
+            print("Chemin actuel non valide, utilisation du chemin par défaut: \(scriptsPath)")
+            config.lastOpenedFolderPath = scriptsPath
+            saveConfig()
+        } else {
+            print("Utilisation du chemin enregistré: \(currentPath)")
+        }
     }
     
     // Copie les scripts existants vers le dossier Resources/ScriptLauncher/Scripts

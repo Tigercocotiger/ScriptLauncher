@@ -8,22 +8,6 @@ struct ScriptsListPanel: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // Sélecteur de dossier cible
-            FolderSelector(
-                currentPath: viewModel.targetFolderPath,
-                isDarkMode: viewModel.isDarkMode,
-                onFolderSelected: { newPath in
-                    // Mettre à jour le chemin dans ConfigManager
-                    ConfigManager.shared.folderPath = newPath
-                    
-                    // Mettre à jour l'état local
-                    viewModel.targetFolderPath = newPath
-                    
-                    // Recharger les scripts
-                    viewModel.loadScripts()
-                }
-            )
-            
             SearchBar(
                 searchText: $viewModel.searchText,
                 showFavoritesOnly: $viewModel.showFavoritesOnly,

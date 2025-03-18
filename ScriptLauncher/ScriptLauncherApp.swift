@@ -36,6 +36,27 @@ struct ScriptLauncherApp: App {
                .commands {
                    CommandGroup(replacing: .newItem) { }
                    
+                   // Menu Fichier avec option pour changer de dossier
+                   CommandMenu("Fichier") {
+                       Button("Changer de dossier cible...") {
+                           NotificationCenter.default.post(
+                               name: NSNotification.Name("ChangeFolderCommand"),
+                               object: nil
+                           )
+                       }
+                       .keyboardShortcut("o", modifiers: .command)
+                       
+                       Divider()
+                       
+                       Button("Réparer les chemins") {
+                           NotificationCenter.default.post(
+                               name: NSNotification.Name("RepairPaths"),
+                               object: nil
+                           )
+                       }
+                       .keyboardShortcut("r", modifiers: [.command, .shift])
+                   }
+                   
                    CommandMenu("Scripts") {
                        Button("Exécuter") {
                            NotificationCenter.default.post(
@@ -131,96 +152,6 @@ struct ScriptLauncherApp: App {
                            )
                        }
                        .keyboardShortcut("c", modifiers: [.command, .shift])
-                       
-                       Divider()
-                       
-                       Button("Réparer les chemins") {
-                           NotificationCenter.default.post(
-                               name: NSNotification.Name("RepairPaths"),
-                               object: nil
-                           )
-                       }
-                       .keyboardShortcut("r", modifiers: [.command, .shift])
-                   }
-                   // Ajouter un menu spécifique pour la gestion des clés USB
-                   CommandMenu("Clés USB") {
-                       Button("Réparer les chemins") {
-                           NotificationCenter.default.post(
-                               name: NSNotification.Name("RepairPaths"),
-                               object: nil
-                           )
-                           
-                           // Afficher une notification de succès
-                           let alert = NSAlert()
-                           alert.messageText = "Réparation terminée"
-                           alert.informativeText = "Les chemins ont été adaptés à la clé USB actuelle."
-                           alert.alertStyle = .informational
-                           alert.addButton(withTitle: "OK")
-                           alert.runModal()
-                           
-                           // Recharger les scripts
-                           NotificationCenter.default.post(
-                               name: NSNotification.Name("RefreshScriptsList"),
-                               object: nil
-                           )
-                       }
-                       .keyboardShortcut("r", modifiers: [.command, .shift])
-                       
-                       Button("Utiliser dossier racine") {
-                           if let usbName = ConfigManager.shared.getCurrentUSBDriveName() {
-                               let usbRootPath = "/Volumes/\(usbName)"
-                               
-                               // Vérifier si le dossier contient des scripts
-                               if ConfigManager.shared.isValidScriptFolder(usbRootPath) {
-                                   ConfigManager.shared.folderPath = "$USB"
-                                   
-                                   // Recharger les scripts
-                                   NotificationCenter.default.post(
-                                       name: NSNotification.Name("RefreshScriptsList"),
-                                       object: nil
-                                   )
-                               } else {
-                                   let alert = NSAlert()
-                                   alert.messageText = "Aucun script trouvé"
-                                   alert.informativeText = "Aucun script n'a été trouvé à la racine de la clé USB."
-                                   alert.alertStyle = .warning
-                                   alert.addButton(withTitle: "OK")
-                                   alert.runModal()
-                               }
-                           } else {
-                               let alert = NSAlert()
-                               alert.messageText = "Non exécuté sur une clé USB"
-                               alert.informativeText = "L'application ne semble pas être exécutée depuis une clé USB."
-                               alert.alertStyle = .warning
-                               alert.addButton(withTitle: "OK")
-                               alert.runModal()
-                           }
-                       }
-                       .keyboardShortcut("u", modifiers: [.command, .shift])
-                       
-                       Button("Informations sur la clé USB") {
-                           if let usbName = ConfigManager.shared.getCurrentUSBDriveName() {
-                               let alert = NSAlert()
-                               alert.messageText = "Informations sur la clé USB"
-                               alert.informativeText = """
-                               Nom de la clé USB : \(usbName)
-                               Chemin complet : /Volumes/\(usbName)
-                               
-                               L'application utilise le dossier Resources à la racine de cette clé USB pour stocker sa configuration.
-                               """
-                               alert.alertStyle = .informational
-                               alert.addButton(withTitle: "OK")
-                               alert.runModal()
-                           } else {
-                               let alert = NSAlert()
-                               alert.messageText = "Non exécuté sur une clé USB"
-                               alert.informativeText = "L'application ne semble pas être exécutée depuis une clé USB."
-                               alert.alertStyle = .warning
-                               alert.addButton(withTitle: "OK")
-                               alert.runModal()
-                           }
-                       }
-                       .keyboardShortcut("i", modifiers: [.command, .shift])
                    }
                }
            }

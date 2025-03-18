@@ -63,9 +63,8 @@ class ContentViewModel: ObservableObject {
     
     // MARK: - Initialization
     func initialize() {
-        // Utiliser le dossier Scripts dans Resources comme chemin par défaut
-        targetFolderPath = ConfigManager.shared.getScriptsFolderPath()
-        ConfigManager.shared.folderPath = targetFolderPath
+        // Charger le dernier dossier ouvert depuis ConfigManager
+        targetFolderPath = ConfigManager.shared.folderPath
         
         loadScripts()
         loadFavorites()
