@@ -329,8 +329,10 @@ class ContentViewModel: ObservableObject {
         if selectedScriptsList.isEmpty, let script = selectedScript {
             executeScript(script: script)
             
-            // Ouvrir le panneau de résultats
-            isResultsPanelExpanded = true
+            // Ouvrir le panneau de résultats avec animation
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                isResultsPanelExpanded = true
+            }
             return
         }
         
@@ -339,9 +341,11 @@ class ContentViewModel: ObservableObject {
             executeScript(script: script)
         }
         
-        // S'il y a des scripts à exécuter, ouvrir le panneau de résultats
+        // S'il y a des scripts à exécuter, ouvrir le panneau de résultats avec animation
         if !selectedScriptsList.isEmpty {
-            isResultsPanelExpanded = true
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                isResultsPanelExpanded = true
+            }
         }
     }
     
