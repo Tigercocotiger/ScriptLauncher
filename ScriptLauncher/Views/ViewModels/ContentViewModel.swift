@@ -24,7 +24,8 @@ class ContentViewModel: ObservableObject {
     @Published var isDarkMode: Bool = false
     @Published var isGridView: Bool = false
     @Published var targetFolderPath: String = ConfigManager.shared.folderPath
-    @Published var isEditMode: Bool = true // Nouveau paramètre pour le mode d'édition
+    @Published var isEditMode: Bool = true // Paramètre pour le mode d'édition
+    @Published var isResultsPanelExpanded: Bool = false // Panneau de résultats (fermé par défaut)
     
     // Tag filtering
     @Published var selectedTag: String? = nil
@@ -75,8 +76,10 @@ class ContentViewModel: ObservableObject {
         // Chargement des préférences
         isDarkMode = ConfigManager.shared.isDarkMode
         isGridView = ConfigManager.shared.isGridView
+        isEditMode = ConfigManager.shared.isEditMode
         
         setupNotificationObservers()
+        setupResultsPanelNotification()
     }
     
     // MARK: - Script Management
@@ -325,12 +328,20 @@ class ContentViewModel: ObservableObject {
         // Si aucun script n'est sélectionné mais qu'il y a un script "actif", l'exécuter
         if selectedScriptsList.isEmpty, let script = selectedScript {
             executeScript(script: script)
+            
+            // Ouvrir le panneau de résultats
+            isResultsPanelExpanded = true
             return
         }
         
         // Exécuter chaque script sélectionné
         for script in selectedScriptsList {
             executeScript(script: script)
+        }
+        
+        // S'il y a des scripts à exécuter, ouvrir le panneau de résultats
+        if !selectedScriptsList.isEmpty {
+            isResultsPanelExpanded = true
         }
     }
     
@@ -452,10 +463,12 @@ class ContentViewModel: ObservableObject {
             )
         }
     }
+    
     // MARK: - Configuration Management
     func cleanupConfig() {
         PathCleanupTool.cleanupConfigFile()
     }
+    
     // MARK: - Special Scripts
     func launchConfiguratorScript() {
         let folderPath = resolvePathIfNeeded(targetFolderPath)
@@ -477,6 +490,19 @@ class ContentViewModel: ObservableObject {
         }
     }
     
+    // MARK: - Results Panel Management
+    private func setupResultsPanelNotification() {
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("ToggleResultsPanel"),
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            guard let self = self else { return }
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                self.isResultsPanelExpanded.toggle()
+            }
+        }
+    }
     // MARK: - Notification Observers
     private func setupNotificationObservers() {
         // Observateurs pour les commandes du menu

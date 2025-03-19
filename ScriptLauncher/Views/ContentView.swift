@@ -6,12 +6,14 @@ struct ContentView: View {
     // MARK: - Properties
     @StateObject private var viewModel = ContentViewModel()
     @FocusState private var isSearchFieldFocused: Bool
-    @State private var isResultsPanelExpanded = true // État pour le panneau de résultats
-    @State private var resultsPanelWidth: CGFloat = 0 // Stocke la largeur du panneau
     
-    // Constante pour les marges uniformes
-    private let standardMargin: CGFloat = 15
-    private let toggleButtonWidth: CGFloat = 16
+    // Binding vers la propriété du ViewModel pour le panneau de résultats
+    private var isResultsPanelExpanded: Binding<Bool> {
+        Binding(
+            get: { viewModel.isResultsPanelExpanded },
+            set: { viewModel.isResultsPanelExpanded = $0 }
+        )
+    }
     
     // MARK: - Body
     var body: some View {
@@ -24,61 +26,50 @@ struct ContentView: View {
                 if geometry.size.width > 700 {
                     // Vue horizontale pour les grandes fenêtres
                     HStack(alignment: .top, spacing: 0) {
-                        // Marge gauche fixe
+                        // Marge constante à gauche
                         Spacer()
-                            .frame(width: standardMargin)
+                            .frame(width: DesignSystem.spacing)
                         
-                        // Panel principal pour les scripts
-                        ScriptsListPanel(
-                            viewModel: viewModel,
-                            isSearchFocused: isSearchFieldFocused,
-                            onSearchFocusChange: { newValue in
-                                isSearchFieldFocused = newValue
-                            }
-                        )
+                        // Panel principal pour les scripts avec bouton de bascule intégré
+                        ZStack(alignment: .trailing) {
+                            // Panneau des scripts
+                            ScriptsListPanel(
+                                viewModel: viewModel,
+                                isSearchFocused: isSearchFieldFocused,
+                                onSearchFocusChange: { newValue in
+                                    isSearchFieldFocused = newValue
+                                }
+                            )
+                            .id(viewModel.viewRefreshID)
+                            
+                            // Bouton de bascule positionné sur la bordure droite
+                            PanelToggleButton(
+                                isDarkMode: viewModel.isDarkMode,
+                                isExpanded: isResultsPanelExpanded
+                            )
+                            .padding(.vertical, geometry.size.height / 3)
+                        }
                         .frame(width: calculateMainPanelWidth(totalWidth: geometry.size.width))
-                        .id(viewModel.viewRefreshID)
                         .padding(.vertical, DesignSystem.spacing)
                         
-                        // Bouton de bascule
-                        PanelToggleButton(
-                            isDarkMode: viewModel.isDarkMode,
-                            isExpanded: $isResultsPanelExpanded
-                        )
-                        .padding(.vertical, geometry.size.height / 3)
+                        // Espacement entre les panneaux
+                        Spacer()
+                            .frame(width: DesignSystem.spacing)
                         
                         // Panneau de résultats avec animation
-                        if isResultsPanelExpanded {
-                            // Espacement entre le bouton et le panneau de résultats
-                            Spacer()
-                                .frame(width: 0) // Pas d'espace supplémentaire après le bouton
-                            
+                        if isResultsPanelExpanded.wrappedValue {
                             ResultsPanel(viewModel: viewModel)
                                 .frame(width: calculateResultsPanelWidth(totalWidth: geometry.size.width))
                                 .transition(.move(edge: .trailing))
                                 .padding(.vertical, DesignSystem.spacing)
-                                .background(
-                                    GeometryReader { geo in
-                                        Color.clear
-                                            .preference(key: WidthPreferenceKey.self, value: geo.size.width)
-                                            .onAppear {
-                                                // Stocker la largeur initiale
-                                                if resultsPanelWidth == 0 {
-                                                    resultsPanelWidth = geo.size.width
-                                                }
-                                            }
-                                    }
-                                )
                             
                             // Marge droite fixe
                             Spacer()
-                                .frame(width: standardMargin)
+                                .frame(width: DesignSystem.spacing)
                         } else {
-                        }
-                    }
-                    .onPreferenceChange(WidthPreferenceKey.self) { width in
-                        if width > 0 {
-                            resultsPanelWidth = width
+                            // Marge droite fixe quand le panneau est fermé
+                            Spacer()
+                                .frame(width: DesignSystem.spacing)
                         }
                     }
                 } else {
@@ -137,21 +128,21 @@ struct ContentView: View {
     
     // Fonction pour calculer la largeur du panneau principal
     private func calculateMainPanelWidth(totalWidth: CGFloat) -> CGFloat {
-        if isResultsPanelExpanded {
-            // Quand le panneau est ouvert: environ 55% de l'espace disponible après marges
-            let usableWidth = totalWidth - (standardMargin * 3) - toggleButtonWidth
-            return usableWidth * 0.55
+        if isResultsPanelExpanded.wrappedValue {
+            // Quand le panneau est ouvert: 60% de l'espace disponible après marges
+            let usableWidth = totalWidth - (DesignSystem.spacing * 3)
+            return usableWidth * 0.6 // Modifié à 60% comme demandé
         } else {
-            // Quand le panneau est fermé: tout l'espace disponible moins marges et bouton
-            return totalWidth - (standardMargin * 2) - toggleButtonWidth
+            // Quand le panneau est fermé: tout l'espace disponible moins marges
+            return totalWidth - (DesignSystem.spacing * 2)
         }
     }
     
     // Fonction pour calculer la largeur du panneau de résultats
     private func calculateResultsPanelWidth(totalWidth: CGFloat) -> CGFloat {
-        // Environ 45% de l'espace disponible après marges
-        let usableWidth = totalWidth - (standardMargin * 3) - toggleButtonWidth
-        return usableWidth * 0.45
+        // 40% de l'espace disponible après marges (correspondant aux 60% du panneau principal)
+        let usableWidth = totalWidth - (DesignSystem.spacing * 3)
+        return usableWidth * 0.4
     }
     
     // MARK: - Configuration des notifications
@@ -176,15 +167,16 @@ struct ContentView: View {
             viewModel.isEditMode.toggle()
         }
         
-        // Nouvelle notification pour basculer le panneau de résultats
+        // Notification pour basculer le panneau de résultats
+        // Cette notification est maintenant traitée par le ViewModel,
+        // mais nous la conservons ici pour l'animation
         NotificationCenter.default.addObserver(
             forName: NSNotification.Name("ToggleResultsPanel"),
             object: nil,
             queue: .main
         ) { _ in
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                self.isResultsPanelExpanded.toggle()
-            }
+            // La notification est maintenant traitée par le ViewModel
+            // Rien à faire ici car l'animation est gérée dans le ViewModel
         }
     }
     

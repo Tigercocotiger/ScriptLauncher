@@ -48,7 +48,7 @@ enum ScriptStatus {
 }
 
 // Modèle pour un script en cours d'exécution
-struct RunningScript: Identifiable {
+struct RunningScript: Identifiable, Equatable {
     let id: UUID // IMPORTANT: Doit correspondre à l'ID du ScriptFile
     let name: String
     var startTime: Date  // 'var' pour permettre la réinitialisation
@@ -74,5 +74,16 @@ struct RunningScript: Identifiable {
         } else {
             return String(format: "%ds", seconds)
         }
+    }
+    
+    // Conformité au protocole Equatable
+    static func == (lhs: RunningScript, rhs: RunningScript) -> Bool {
+        return lhs.id == rhs.id &&
+               lhs.name == rhs.name &&
+               lhs.startTime == rhs.startTime &&
+               lhs.output == rhs.output &&
+               lhs.isSelected == rhs.isSelected &&
+               lhs.status == rhs.status &&
+               lhs.endTime == rhs.endTime
     }
 }

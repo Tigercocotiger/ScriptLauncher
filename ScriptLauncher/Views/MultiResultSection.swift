@@ -25,7 +25,7 @@ struct MultiResultSection: View {
             // En-tête
             Text("Résultat")
                 .font(.headline)
-                .foregroundColor(DesignSystem.textPrimary(for: isDarkMode))
+                .foregroundColor(DesignSystem.accentColor(for: isDarkMode))
                 .frame(maxWidth: .infinity, alignment: .center)
                 .padding(.top, DesignSystem.spacing)
                 .padding(.bottom, 8)
