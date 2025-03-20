@@ -110,20 +110,72 @@ class DMGInfoExtractor: ObservableObject {
                 var mountPoint: String? = nil
                 var actualVolumeName: String? = nil
                 
-                // CORRECTION IMPORTANTE: Analyser la dernière ligne qui contient souvent le point de montage réel
+                // Amélioration: Extraire le point de montage de façon plus robuste
                 let lines = output.components(separatedBy: "\n").filter { !$0.isEmpty }
-                if let lastLine = lines.last {
-                    // Chercher une ligne de forme "/dev/diskX /Volumes/VolumeName"
-                    let components = lastLine.split(separator: " ").map { String($0) }
-                    if components.count >= 2, components[0].contains("/dev/disk"),
-                       components.last?.contains("/Volumes/") == true {
-                        mountPoint = components.last ?? ""
-                        actualVolumeName = mountPoint?.replacingOccurrences(of: "/Volumes/", with: "")
-                        print("🔍 Point de montage détecté depuis la sortie: \(mountPoint ?? "inconnu")")
+                
+                // Première méthode: chercher une ligne avec "/dev/disk" et "/Volumes/"
+                for line in lines {
+                    if line.contains("/dev/disk") && line.contains("/Volumes/") {
+                        if let volumesRange = line.range(of: "/Volumes/") {
+                            let startIndex = volumesRange.lowerBound
+                            var pathSubstring = String(line[startIndex...])
+                            
+                            // Nettoyer le chemin (en conservant les espaces dans le nom)
+                            pathSubstring = pathSubstring.trimmingCharacters(in: .whitespaces)
+                            
+                            // Si le chemin contient des espaces de fin qui ne font pas partie du nom
+                            // (On suppose que le chemin est au format /Volumes/Nom du Volume)
+                            mountPoint = pathSubstring
+                            actualVolumeName = mountPoint?.replacingOccurrences(of: "/Volumes/", with: "")
+                            
+                            print("🔍 Point de montage détecté: \(mountPoint ?? "inconnu")")
+                            
+                            // Vérifier immédiatement si ce chemin existe
+                            if mountPoint != nil && FileManager.default.fileExists(atPath: mountPoint!) {
+                                break
+                            }
+                        }
                     }
                 }
                 
-                // Si nous n'avons pas trouvé le point de montage, utiliser des méthodes alternatives
+                // Seconde méthode (secours): utiliser hdiutil info pour obtenir la liste des volumes montés
+                if mountPoint == nil || !FileManager.default.fileExists(atPath: mountPoint!) {
+                    print("🔍 Tentative de détection alternative avec hdiutil info...")
+                    
+                    let infoProcess = Process()
+                    infoProcess.launchPath = "/usr/bin/hdiutil"
+                    infoProcess.arguments = ["info"]
+                    
+                    let infoPipe = Pipe()
+                    infoProcess.standardOutput = infoPipe
+                    
+                    try infoProcess.run()
+                    infoProcess.waitUntilExit()
+                    
+                    let infoOutput = String(data: infoPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+                    let infoLines = infoOutput.components(separatedBy: "\n")
+                    
+                    // Rechercher le volume le plus récemment monté
+                    // Format typique: /dev/diskXsY [...] Apple_HFS /Volumes/NomDuVolume
+                    let mountedVolumes = infoLines.filter { line in
+                        line.contains("/Volumes/") && !line.contains("Macintosh HD")
+                    }
+                    
+                    for volumeLine in mountedVolumes {
+                        if let volumesRange = volumeLine.range(of: "/Volumes/") {
+                            let potentialMountPoint = String(volumeLine[volumesRange.lowerBound...]).trimmingCharacters(in: .whitespaces)
+                            
+                            if FileManager.default.fileExists(atPath: potentialMountPoint) {
+                                mountPoint = potentialMountPoint
+                                actualVolumeName = mountPoint?.replacingOccurrences(of: "/Volumes/", with: "")
+                                print("🔍 Point de montage détecté via hdiutil info: \(mountPoint ?? "inconnu")")
+                                break
+                            }
+                        }
+                    }
+                }
+                
+                // Troisième méthode (dernier recours): chercher directement dans /Volumes
                 if mountPoint == nil {
                     // Mise à jour de la progression
                     self.updateProgress(0.6, message: "Recherche du volume monté...")

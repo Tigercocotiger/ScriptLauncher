@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXFileReference section */
-		44DDA4E82D6DD8F60038BFBF /* ScriptLauncher.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ScriptLauncher.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		44DDA4E82D6DD8F60038BFBF /* Mac Portable Management Software.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Mac Portable Management Software.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -40,7 +40,7 @@
 		44DDA4E92D6DD8F60038BFBF /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				44DDA4E82D6DD8F60038BFBF /* ScriptLauncher.app */,
+				44DDA4E82D6DD8F60038BFBF /* Mac Portable Management Software.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -67,7 +67,7 @@
 			packageProductDependencies = (
 			);
 			productName = ScriptLauncher;
-			productReference = 44DDA4E82D6DD8F60038BFBF /* ScriptLauncher.app */;
+			productReference = 44DDA4E82D6DD8F60038BFBF /* Mac Portable Management Software.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -255,6 +255,7 @@
 				DEVELOPMENT_ASSET_PATHS = "\"ScriptLauncher/Preview Content\"";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				"INFOPLIST_KEY_CFBundleDisplayName[sdk=*]" = "";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -264,7 +265,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 13.5;
 				MARKETING_VERSION = 1.0.3;
 				PRODUCT_BUNDLE_IDENTIFIER = MPM.ScriptLauncher;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = "Mac Portable Management Software";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 			};
@@ -282,6 +283,7 @@
 				DEVELOPMENT_ASSET_PATHS = "\"ScriptLauncher/Preview Content\"";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				"INFOPLIST_KEY_CFBundleDisplayName[sdk=*]" = "";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -291,7 +293,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 13.5;
 				MARKETING_VERSION = 1.0.3;
 				PRODUCT_BUNDLE_IDENTIFIER = MPM.ScriptLauncher;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = "Mac Portable Management Software";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 			};
